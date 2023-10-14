@@ -2,6 +2,7 @@
 // Created by xiang on 2021/11/5.
 //
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <iomanip>
 
@@ -14,13 +15,15 @@ DEFINE_bool(with_ui, true, "是否显示图形界面");
 
 /// 本程序演示如何对IMU进行直接积分
 /// 该程序需要输入data/ch3/下的文本文件，同时它将状态输出到data/ch3/state.txt中，在UI中也可以观察到车辆运动
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     google::InitGoogleLogging(argv[0]);
-    FLAGS_stderrthreshold = google::INFO;
+    FLAGS_stderrthreshold  = google::INFO;
     FLAGS_colorlogtostderr = true;
     google::ParseCommandLineFlags(&argc, &argv, true);
 
-    if (FLAGS_imu_txt_path.empty()) {
+    if (FLAGS_imu_txt_path.empty())
+    {
         return -1;
     }
 
@@ -34,7 +37,8 @@ int main(int argc, char** argv) {
     sad::IMUIntegration imu_integ(gravity, init_bg, init_ba);
 
     std::shared_ptr<sad::ui::PangolinWindow> ui = nullptr;
-    if (FLAGS_with_ui) {
+    if (FLAGS_with_ui)
+    {
         ui = std::make_shared<sad::ui::PangolinWindow>();
         ui->Init();
     }
@@ -58,18 +62,21 @@ int main(int argc, char** argv) {
     io.SetIMUProcessFunc([&imu_integ, &save_result, &fout, &ui](const sad::IMU& imu) {
           imu_integ.AddIMU(imu);
           save_result(fout, imu.timestamp_, imu_integ.GetR(), imu_integ.GetV(), imu_integ.GetP());
-          if (ui) {
+          if (ui)
+          {
               ui->UpdateNavState(imu_integ.GetNavState());
               usleep(1e2);
           }
       }).Go();
 
     // 打开了可视化的话，等待界面退出
-    while (ui && !ui->ShouldQuit()) {
+    while (ui && !ui->ShouldQuit())
+    {
         usleep(1e4);
     }
 
-    if (ui) {
+    if (ui)
+    {
         ui->Quit();
     }
 
