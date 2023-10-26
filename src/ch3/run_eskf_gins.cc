@@ -23,22 +23,24 @@ DEFINE_bool(with_odom, false, "是否加入轮速计信息");
 /**
  * 本程序演示使用RTK+IMU进行组合导航
  */
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     google::InitGoogleLogging(argv[0]);
-    FLAGS_stderrthreshold = google::INFO;
+    FLAGS_stderrthreshold  = google::INFO;
     FLAGS_colorlogtostderr = true;
     google::ParseCommandLineFlags(&argc, &argv, true);
 
-    if (fLS::FLAGS_txt_path.empty()) {
+    if (fLS::FLAGS_txt_path.empty())
+    {
         return -1;
     }
 
     // 初始化器
     sad::StaticIMUInit imu_init;  // 使用默认配置
-    sad::ESKFD eskf;
+    sad::ESKFD         eskf;
 
     sad::TxtIO io(FLAGS_txt_path);
-    Vec2d antenna_pos(FLAGS_antenna_pox_x, FLAGS_antenna_pox_y);
+    Vec2d      antenna_pos(FLAGS_antenna_pox_x, FLAGS_antenna_pox_y);
 
     auto save_vec3 = [](std::ofstream& fout, const Vec3d& v) { fout << v[0] << " " << v[1] << " " << v[2] << " "; };
     auto save_quat = [](std::ofstream& fout, const Quatd& q) {
@@ -56,27 +58,30 @@ int main(int argc, char** argv) {
     };
 
     std::ofstream fout("./data/ch3/gins.txt");
-    bool imu_inited = false, gnss_inited = false;
+    bool          imu_inited = false, gnss_inited = false;
 
     std::shared_ptr<sad::ui::PangolinWindow> ui = nullptr;
-    if (FLAGS_with_ui) {
+    if (FLAGS_with_ui)
+    {
         ui = std::make_shared<sad::ui::PangolinWindow>();
         ui->Init();
     }
 
     /// 设置各类回调函数
-    bool first_gnss_set = false;
-    Vec3d origin = Vec3d::Zero();
+    bool  first_gnss_set = false;
+    Vec3d origin         = Vec3d::Zero();
 
     io.SetIMUProcessFunc([&](const sad::IMU& imu) {
           /// IMU 处理函数
-          if (!imu_init.InitSuccess()) {
+          if (!imu_init.InitSuccess())
+          {
               imu_init.AddIMU(imu);
               return;
           }
 
           /// 需要IMU初始化
-          if (!imu_inited) {
+          if (!imu_inited)
+          {
               // 读取初始零偏，设置ESKF
               sad::ESKFD::Options options;
               // 噪声由初始化器估计
@@ -87,7 +92,8 @@ int main(int argc, char** argv) {
               return;
           }
 
-          if (!gnss_inited) {
+          if (!gnss_inited)
+          {
               /// 等待有效的RTK数据
               return;
           }
@@ -97,7 +103,8 @@ int main(int argc, char** argv) {
 
           /// predict就会更新ESKF，所以此时就可以发送数据
           auto state = eskf.GetNominalState();
-          if (ui) {
+          if (ui)
+          {
               ui->UpdateNavState(state);
           }
 
@@ -108,18 +115,21 @@ int main(int argc, char** argv) {
       })
         .SetGNSSProcessFunc([&](const sad::GNSS& gnss) {
             /// GNSS 处理函数
-            if (!imu_inited) {
+            if (!imu_inited)
+            {
                 return;
             }
 
             sad::GNSS gnss_convert = gnss;
-            if (!sad::ConvertGps2UTM(gnss_convert, antenna_pos, FLAGS_antenna_angle) || !gnss_convert.heading_valid_) {
+            if (!sad::ConvertGps2UTM(gnss_convert, antenna_pos, FLAGS_antenna_angle) || !gnss_convert.heading_valid_)
+            {
                 return;
             }
 
             /// 去掉原点
-            if (!first_gnss_set) {
-                origin = gnss_convert.utm_pose_.translation();
+            if (!first_gnss_set)
+            {
+                origin         = gnss_convert.utm_pose_.translation();
                 first_gnss_set = true;
             }
             gnss_convert.utm_pose_.translation() -= origin;
@@ -128,7 +138,8 @@ int main(int argc, char** argv) {
             eskf.ObserveGps(gnss_convert);
 
             auto state = eskf.GetNominalState();
-            if (ui) {
+            if (ui)
+            {
                 ui->UpdateNavState(state);
             }
             save_result(fout, state);
@@ -138,16 +149,19 @@ int main(int argc, char** argv) {
         .SetOdomProcessFunc([&](const sad::Odom& odom) {
             /// Odom 处理函数，本章Odom只给初始化使用
             imu_init.AddOdom(odom);
-            if (FLAGS_with_odom && imu_inited && gnss_inited) {
+            if (FLAGS_with_odom && imu_inited && gnss_inited)
+            {
                 eskf.ObserveWheelSpeed(odom);
             }
         })
         .Go();
 
-    while (ui && !ui->ShouldQuit()) {
+    while (ui && !ui->ShouldQuit())
+    {
         usleep(1e5);
     }
-    if (ui) {
+    if (ui)
+    {
         ui->Quit();
     }
     return 0;

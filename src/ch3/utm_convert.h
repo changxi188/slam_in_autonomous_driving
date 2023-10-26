@@ -7,8 +7,8 @@
 
 #include "common/gnss.h"
 
-namespace sad {
-
+namespace sad
+{
 /**
  * 计算本书的GNSS读数对应的UTM pose和六自由度Pose
  * @param gnss_reading  输入gnss读数

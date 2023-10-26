@@ -7,20 +7,24 @@
 
 #include <glog/logging.h>
 
-namespace sad {
-
-bool StaticIMUInit::AddIMU(const IMU& imu) {
-    if (init_success_) {
+namespace sad
+{
+bool StaticIMUInit::AddIMU(const IMU& imu)
+{
+    if (init_success_)
+    {
         return true;
     }
 
-    if (options_.use_speed_for_static_checking_ && !is_static_) {
+    if (options_.use_speed_for_static_checking_ && !is_static_)
+    {
         LOG(WARNING) << "等待车辆静止";
         init_imu_deque_.clear();
         return false;
     }
 
-    if (init_imu_deque_.empty()) {
+    if (init_imu_deque_.empty())
+    {
         // 记录初始静止时间
         init_start_time_ = imu.timestamp_;
     }
@@ -29,13 +33,15 @@ bool StaticIMUInit::AddIMU(const IMU& imu) {
     init_imu_deque_.push_back(imu);
 
     double init_time = imu.timestamp_ - init_start_time_;  // 初始化经过时间
-    if (init_time > options_.init_time_seconds_) {
+    if (init_time > options_.init_time_seconds_)
+    {
         // 尝试初始化逻辑
         TryInit();
     }
 
     // 维持初始化队列长度
-    while (init_imu_deque_.size() > options_.init_imu_queue_max_size_) {
+    while (init_imu_deque_.size() > options_.init_imu_queue_max_size_)
+    {
         init_imu_deque_.pop_front();
     }
 
@@ -43,15 +49,20 @@ bool StaticIMUInit::AddIMU(const IMU& imu) {
     return false;
 }
 
-bool StaticIMUInit::AddOdom(const Odom& odom) {
+bool StaticIMUInit::AddOdom(const Odom& odom)
+{
     // 判断车辆是否静止
-    if (init_success_) {
+    if (init_success_)
+    {
         return true;
     }
 
-    if (odom.left_pulse_ < options_.static_odom_pulse_ && odom.right_pulse_ < options_.static_odom_pulse_) {
+    if (odom.left_pulse_ < options_.static_odom_pulse_ && odom.right_pulse_ < options_.static_odom_pulse_)
+    {
         is_static_ = true;
-    } else {
+    }
+    else
+    {
         is_static_ = false;
     }
 
@@ -59,8 +70,10 @@ bool StaticIMUInit::AddOdom(const Odom& odom) {
     return true;
 }
 
-bool StaticIMUInit::TryInit() {
-    if (init_imu_deque_.size() < 10) {
+bool StaticIMUInit::TryInit()
+{
+    if (init_imu_deque_.size() < 10)
+    {
         return false;
     }
 
@@ -78,12 +91,14 @@ bool StaticIMUInit::TryInit() {
                                 [this](const IMU& imu) { return imu.acce_ + gravity_; });
 
     // 检查IMU噪声
-    if (cov_gyro_.norm() > options_.max_static_gyro_var) {
+    if (cov_gyro_.norm() > options_.max_static_gyro_var)
+    {
         LOG(ERROR) << "陀螺仪测量噪声太大" << cov_gyro_.norm() << " > " << options_.max_static_gyro_var;
         return false;
     }
 
-    if (cov_acce_.norm() > options_.max_static_acce_var) {
+    if (cov_acce_.norm() > options_.max_static_acce_var)
+    {
         LOG(ERROR) << "加计测量噪声太大" << cov_acce_.norm() << " > " << options_.max_static_acce_var;
         return false;
     }

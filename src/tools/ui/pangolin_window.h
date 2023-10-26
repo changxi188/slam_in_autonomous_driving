@@ -9,15 +9,16 @@
 #include <map>
 #include <memory>
 
-namespace sad::ui {
-
+namespace sad::ui
+{
 class PangolinWindowImpl;
 
 /**
  * @note 此类本身不直接涉及任何opengl和pangolin操作，应当放到PangolinWindowImpl中
  */
-class PangolinWindow {
-   public:
+class PangolinWindow
+{
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
     PangolinWindow();
@@ -52,7 +53,7 @@ class PangolinWindow {
     /// 设置需要保留多少个扫描数据
     void SetCurrentScanSize(int current_scan_size);
 
-   private:
+private:
     std::shared_ptr<PangolinWindowImpl> impl_ = nullptr;
 };
 }  // namespace sad::ui

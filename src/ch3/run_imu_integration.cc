@@ -67,7 +67,8 @@ int main(int argc, char** argv)
               ui->UpdateNavState(imu_integ.GetNavState());
               usleep(1e2);
           }
-      }).Go();
+      })
+        .Go();
 
     // 打开了可视化的话，等待界面退出
     while (ui && !ui->ShouldQuit())
