@@ -261,11 +261,18 @@ bool ESKF<S>::Predict(const IMU& imu)
     R_ = new_R;
     v_ = new_v;
     p_ = new_p;
+
     // 其余状态维度不变
 
     // error state 递推
     // 计算运动过程雅可比矩阵 F，见(3.47)
     // F实际上是稀疏矩阵，也可以不用矩阵形式进行相乘而是写成散装形式，这里为了教学方便，使用矩阵形式
+
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::chrono::duration<double>                      elapsed_seconds;
+    start = std::chrono::system_clock::now();
+
+    Vec18d self_dx                = dx_;
     Mat18T F                      = Mat18T::Identity();                             // 主对角线
     F.template block<3, 3>(0, 3)  = Mat3T::Identity() * dt;                         // p 对 v
     F.template block<3, 3>(3, 6)  = -R_.matrix() * SO3::hat(imu.acce_ - ba_) * dt;  // v对theta
@@ -275,7 +282,34 @@ bool ESKF<S>::Predict(const IMU& imu)
     F.template block<3, 3>(6, 9)  = -Mat3T::Identity() * dt;                        // theta 对 bg
 
     // mean and cov prediction
-    dx_           = F * dx_;  // 这行其实没必要算，dx_在重置之后应该为零，因此这步可以跳过，但F需要参与Cov部分计算，所以保留
+    dx_ = F * dx_;  // 这行其实没必要算，dx_在重置之后应该为零，因此这步可以跳过，但F需要参与Cov部分计算，所以保留
+    end             = std::chrono::system_clock::now();
+    elapsed_seconds = end - start;
+    std::cout << "大矩阵运算耗时: " << elapsed_seconds.count() * 1000 << " ms" << std::endl;
+
+    // self_dx 是用来做拆开运算的，其中每个分量的对应含义如下所示：
+    // Vec3d d_p     = self_dx.block<3, 1>(0, 0);
+    // Vec3d d_v     = self_dx.block<3, 1>(3, 0);
+    // Vec3d d_theta = self_dx.block<3, 1>(6, 0);
+    // Vec3d d_bg    = self_dx.block<3, 1>(9, 0);
+    // Vec3d d_ba    = self_dx.block<3, 1>(12, 0);
+    // Vec3d d_g     = self_dx.block<3, 1>(15, 0);
+
+    // clang-format off
+    start                     = std::chrono::system_clock::now();
+    self_dx.block<3, 1>(0, 0) = self_dx.block<3, 1>(0, 0) 
+                              + self_dx.block<3, 1>(3, 0) * dt;
+    self_dx.block<3, 1>(3, 0) = self_dx.block<3, 1>(3, 0) 
+                              + (-R_.matrix() * SO3::hat(imu.acce_ - ba_) * self_dx.block<3, 1>(6, 0) - R_.matrix() * self_dx.block<3, 1>(12, 0) + self_dx.block<3, 1>(15, 0)) * dt;
+    self_dx.block<3, 1>(6, 0) = SO3::exp(-(imu.gyro_ - bg_) * dt).matrix() * self_dx.block<3, 1>(6, 0) 
+                              - self_dx.block<3, 1>(9, 0) * dt;
+    // clang-format on
+
+    end             = std::chrono::system_clock::now();
+    elapsed_seconds = end - start;
+    std::cout << "展开运算耗时: " << elapsed_seconds.count() * 1000 << " ms" << std::endl;
+    std::cout << std::endl;
+
     cov_          = F * cov_.eval() * F.transpose() + Q_;
     current_time_ = imu.timestamp_;
     return true;
