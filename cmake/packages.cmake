@@ -90,8 +90,8 @@ if(BUILD_WITH_UBUNTU1804)
 
     include(${TBB_ROOT_DIR}/cmake/TBBBuild.cmake)
 
-    #message(STATUS "======TBB_BUILD_DIR = ${TBB_BUILD_DIR}")
-    #message(STATUS "======TBB_BUILD_PREFIX = ${TBB_BUILD_PREFIX}")
+    message(STATUS "======TBB_BUILD_DIR = ${TBB_BUILD_DIR}")
+    message(STATUS "======TBB_BUILD_PREFIX = ${TBB_BUILD_PREFIX}")
 
     tbb_build(TBB_ROOT ${TBB_ROOT_DIR}
             compiler=gcc-9
