@@ -8,8 +8,8 @@
 
 #include "ch3/eskf.hpp"
 #include "ch3/static_imu_init.h"
-#include "ch4/imu_preintegration.h"
 #include "ch4/g2o_types.h"
+#include "ch4/imu_preintegration.h"
 #include "common/g2o_types.h"
 #include "common/io_utils.h"
 
@@ -25,23 +25,25 @@ DEFINE_double(antenna_pox_x, -0.17, "RTK天线安装偏移X");
 DEFINE_double(antenna_pox_y, -0.20, "RTK天线安装偏移Y");
 DEFINE_bool(with_ui, true, "是否显示图形界面");
 
-TEST(PREINTEGRATION_TEST, ROTATION_TEST) {
+TEST(PREINTEGRATION_TEST, ROTATION_TEST)
+{
     // 测试在恒定角速度运转下的预积分情况
-    double imu_time_span = 0.01;       // IMU测量间隔
-    Vec3d constant_omega(0, 0, M_PI);  // 角速度为180度/s，转1秒应该等于转180度
-    Vec3d gravity(0, 0, -9.8);         // Z 向上，重力方向为负
+    double imu_time_span = 0.01;        // IMU测量间隔
+    Vec3d  constant_omega(0, 0, M_PI);  // 角速度为180度/s，转1秒应该等于转180度
+    Vec3d  gravity(0, 0, -9.8);         // Z 向上，重力方向为负
 
-    sad::NavStated start_status(0), end_status(1.0);
+    sad::NavStated         start_status(0), end_status(1.0);
     sad::IMUPreintegration pre_integ;
 
     // 对比直接积分
     Sophus::SO3d R;
-    Vec3d t = Vec3d::Zero();
-    Vec3d v = Vec3d::Zero();
+    Vec3d        t = Vec3d::Zero();
+    Vec3d        v = Vec3d::Zero();
 
-    for (int i = 1; i <= 100; ++i) {
+    for (int i = 1; i <= 100; ++i)
+    {
         double time = imu_time_span * i;
-        Vec3d acce = -gravity;  // 加速度计应该测量到一个向上的力
+        Vec3d  acce = -gravity;  // 加速度计应该测量到一个向上的力
         pre_integ.Integrate(sad::IMU(time, constant_omega, acce), imu_time_span);
 
         sad::NavStated this_status = pre_integ.Predict(start_status, gravity);
@@ -80,23 +82,25 @@ TEST(PREINTEGRATION_TEST, ROTATION_TEST) {
     SUCCEED();
 }
 
-TEST(PREINTEGRATION_TEST, ACCELERATION_TEST) {
+TEST(PREINTEGRATION_TEST, ACCELERATION_TEST)
+{
     // 测试在恒定加速度运行下的预积分情况
-    double imu_time_span = 0.01;     // IMU测量间隔
-    Vec3d gravity(0, 0, -9.8);       // Z 向上，重力方向为负
-    Vec3d constant_acce(0.1, 0, 0);  // x 方向上的恒定加速度
+    double imu_time_span = 0.01;      // IMU测量间隔
+    Vec3d  gravity(0, 0, -9.8);       // Z 向上，重力方向为负
+    Vec3d  constant_acce(0.1, 0, 0);  // x 方向上的恒定加速度
 
-    sad::NavStated start_status(0), end_status(1.0);
+    sad::NavStated         start_status(0), end_status(1.0);
     sad::IMUPreintegration pre_integ;
 
     // 对比直接积分
     Sophus::SO3d R;
-    Vec3d t = Vec3d::Zero();
-    Vec3d v = Vec3d::Zero();
+    Vec3d        t = Vec3d::Zero();
+    Vec3d        v = Vec3d::Zero();
 
-    for (int i = 1; i <= 100; ++i) {
+    for (int i = 1; i <= 100; ++i)
+    {
         double time = imu_time_span * i;
-        Vec3d acce = constant_acce - gravity;
+        Vec3d  acce = constant_acce - gravity;
         pre_integ.Integrate(sad::IMU(time, Vec3d::Zero(), acce), imu_time_span);
         sad::NavStated this_status = pre_integ.Predict(start_status, gravity);
 
@@ -136,42 +140,46 @@ void Optimize(sad::NavStated& last_state, sad::NavStated& this_state, sad::GNSS&
               std::shared_ptr<sad::IMUPreintegration>& preinteg, const Vec3d& grav);
 
 /// 使用ESKF的Predict, Update来验证预积分的优化过程
-TEST(PREINTEGRATION_TEST, ESKF_TEST) {
-    if (fLS::FLAGS_txt_path.empty()) {
+TEST(PREINTEGRATION_TEST, ESKF_TEST)
+{
+    if (fLS::FLAGS_txt_path.empty())
+    {
         FAIL();
     }
 
     // 初始化器
     sad::StaticIMUInit imu_init;  // 使用默认配置
-    sad::ESKFD eskf;
+    sad::ESKFD         eskf;
 
     sad::TxtIO io(FLAGS_txt_path);
-    Vec2d antenna_pos(FLAGS_antenna_pox_x, FLAGS_antenna_pox_y);
+    Vec2d      antenna_pos(FLAGS_antenna_pox_x, FLAGS_antenna_pox_y);
 
     std::ofstream fout("./data/ch3/gins.txt");
-    bool imu_inited = false, gnss_inited = false;
+    bool          imu_inited = false, gnss_inited = false;
 
     /// 设置各类回调函数
-    bool first_gnss_set = false;
-    Vec3d origin = Vec3d::Zero();
+    bool  first_gnss_set = false;
+    Vec3d origin         = Vec3d::Zero();
 
     std::shared_ptr<sad::IMUPreintegration> preinteg = nullptr;
 
     sad::NavStated last_state;
-    bool last_state_set = false;
+    bool           last_state_set = false;
 
     sad::GNSS last_gnss;
-    bool last_gnss_set = false;
+    bool      last_gnss_set = false;
 
     io.SetIMUProcessFunc([&](const sad::IMU& imu) {
           /// IMU 处理函数
-          if (!imu_init.InitSuccess()) {
+          if (!imu_init.InitSuccess())
+          {
               imu_init.AddIMU(imu);
               return;
           }
 
           /// 需要IMU初始化
-          if (!imu_inited) {
+          if (!imu_inited)
+          {
               // 读取初始零偏，设置ESKF
               sad::ESKFD::Options options;
               // 噪声由初始化器估计
@@ -183,7 +191,8 @@ TEST(PREINTEGRATION_TEST, ESKF_TEST) {
               return;
           }
 
-          if (!gnss_inited) {
+          if (!gnss_inited)
+          {
               /// 等待有效的RTK数据
               return;
           }
@@ -192,12 +201,14 @@ TEST(PREINTEGRATION_TEST, ESKF_TEST) {
           double current_time = eskf.GetNominalState().timestamp_;
           eskf.Predict(imu);
 
-          if (preinteg) {
+          if (preinteg)
+          {
               preinteg->Integrate(imu, imu.timestamp_ - current_time);
 
-              if (last_state_set) {
+              if (last_state_set)
+              {
                   auto pred_of_preinteg = preinteg->Predict(last_state, eskf.GetGravity());
-                  auto pred_of_eskf = eskf.GetNominalState();
+                  auto pred_of_eskf     = eskf.GetNominalState();
 
                   /// 这两个预测值的误差应该非常接近
                   EXPECT_NEAR((pred_of_preinteg.p_ - pred_of_eskf.p_).norm(), 0, 1e-2);
@@ -208,18 +219,21 @@ TEST(PREINTEGRATION_TEST, ESKF_TEST) {
       })
         .SetGNSSProcessFunc([&](const sad::GNSS& gnss) {
             /// GNSS 处理函数
-            if (!imu_inited) {
+            if (!imu_inited)
+            {
                 return;
             }
 
             sad::GNSS gnss_convert = gnss;
-            if (!sad::ConvertGps2UTM(gnss_convert, antenna_pos, FLAGS_antenna_angle) || !gnss_convert.heading_valid_) {
+            if (!sad::ConvertGps2UTM(gnss_convert, antenna_pos, FLAGS_antenna_angle) || !gnss_convert.heading_valid_)
+            {
                 return;
             }
 
             /// 去掉原点
-            if (!first_gnss_set) {
-                origin = gnss_convert.utm_pose_.translation();
+            if (!first_gnss_set)
+            {
+                origin         = gnss_convert.utm_pose_.translation();
                 first_gnss_set = true;
             }
             gnss_convert.utm_pose_.translation() -= origin;
@@ -230,7 +244,8 @@ TEST(PREINTEGRATION_TEST, ESKF_TEST) {
             eskf.ObserveGps(gnss_convert);
 
             // 验证优化过程是否正确
-            if (last_state_set && last_gnss_set) {
+            if (last_state_set && last_gnss_set)
+            {
                 auto update_state = eskf.GetNominalState();
 
                 LOG(INFO) << "state before eskf update: " << state_bef_update;
@@ -242,17 +257,17 @@ TEST(PREINTEGRATION_TEST, ESKF_TEST) {
                 Optimize(last_state, update_state, last_gnss, gnss_convert, preinteg, eskf.GetGravity());
             }
 
-            last_state = eskf.GetNominalState();
+            last_state     = eskf.GetNominalState();
             last_state_set = true;
 
             // 重置预积分
             sad::IMUPreintegration::Options options;
             options.init_bg_ = last_state.bg_;
             options.init_ba_ = last_state.ba_;
-            preinteg = std::make_shared<sad::IMUPreintegration>(options);
+            preinteg         = std::make_shared<sad::IMUPreintegration>(options);
 
-            gnss_inited = true;
-            last_gnss = gnss_convert;
+            gnss_inited   = true;
+            last_gnss     = gnss_convert;
             last_gnss_set = true;
         })
         .SetOdomProcessFunc([&](const sad::Odom& odom) { imu_init.AddOdom(odom); })
@@ -262,15 +277,17 @@ TEST(PREINTEGRATION_TEST, ESKF_TEST) {
 }
 
 void Optimize(sad::NavStated& last_state, sad::NavStated& this_state, sad::GNSS& last_gnss, sad::GNSS& this_gnss,
-              std::shared_ptr<sad::IMUPreintegration>& pre_integ, const Vec3d& grav) {
+              std::shared_ptr<sad::IMUPreintegration>& pre_integ, const Vec3d& grav)
+{
     assert(pre_integ != nullptr);
 
-    if (pre_integ->dt_ < 1e-3) {
+    if (pre_integ->dt_ < 1e-3)
+    {
         // 未得到积分
         return;
     }
 
-    using BlockSolverType = g2o::BlockSolverX;
+    using BlockSolverType  = g2o::BlockSolverX;
     using LinearSolverType = g2o::LinearSolverEigen<BlockSolverType::PoseMatrixType>;
 
     auto* solver = new g2o::OptimizationAlgorithmGaussNewton(
@@ -386,9 +403,10 @@ void Optimize(sad::NavStated& last_state, sad::NavStated& this_state, sad::GNSS&
     LOG(INFO) << "bias: " << edge_gyro_rw->chi2() << "/" << edge_acc_rw->error().transpose();
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     google::InitGoogleLogging(argv[0]);
-    FLAGS_stderrthreshold = google::INFO;
+    FLAGS_stderrthreshold  = google::INFO;
     FLAGS_colorlogtostderr = true;
 
     testing::InitGoogleTest(&argc, argv);

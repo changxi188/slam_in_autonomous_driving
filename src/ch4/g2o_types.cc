@@ -5,56 +5,60 @@
 #include "ch4/g2o_types.h"
 #include "common/g2o_types.h"
 
-namespace sad {
+namespace sad
+{
 
 EdgeInertial::EdgeInertial(std::shared_ptr<IMUPreintegration> preinteg, const Vec3d& gravity, double weight)
-    : preint_(preinteg), dt_(preinteg->dt_) {
+  : preint_(preinteg), dt_(preinteg->dt_)
+{
     resize(6);  // 6个关联顶点
     grav_ = gravity;
     setInformation(preinteg->cov_.inverse() * weight);
 }
 
-void EdgeInertial::computeError() {
-    auto* p1 = dynamic_cast<const VertexPose*>(_vertices[0]);
-    auto* v1 = dynamic_cast<const VertexVelocity*>(_vertices[1]);
+void EdgeInertial::computeError()
+{
+    auto* p1  = dynamic_cast<const VertexPose*>(_vertices[0]);
+    auto* v1  = dynamic_cast<const VertexVelocity*>(_vertices[1]);
     auto* bg1 = dynamic_cast<const VertexGyroBias*>(_vertices[2]);
     auto* ba1 = dynamic_cast<const VertexAccBias*>(_vertices[3]);
-    auto* p2 = dynamic_cast<const VertexPose*>(_vertices[4]);
-    auto* v2 = dynamic_cast<const VertexVelocity*>(_vertices[5]);
+    auto* p2  = dynamic_cast<const VertexPose*>(_vertices[4]);
+    auto* v2  = dynamic_cast<const VertexVelocity*>(_vertices[5]);
 
     Vec3d bg = bg1->estimate();
     Vec3d ba = ba1->estimate();
 
-    const SO3 dR = preint_->GetDeltaRotation(bg);
+    const SO3   dR = preint_->GetDeltaRotation(bg);
     const Vec3d dv = preint_->GetDeltaVelocity(bg, ba);
     const Vec3d dp = preint_->GetDeltaPosition(bg, ba);
 
     /// 预积分误差项（4.41）
-    const Vec3d er = (dR.inverse() * p1->estimate().so3().inverse() * p2->estimate().so3()).log();
-    Mat3d RiT = p1->estimate().so3().inverse().matrix();
-    const Vec3d ev = RiT * (v2->estimate() - v1->estimate() - grav_ * dt_) - dv;
-    const Vec3d ep = RiT * (p2->estimate().translation() - p1->estimate().translation() - v1->estimate() * dt_ -
+    const Vec3d er  = (dR.inverse() * p1->estimate().so3().inverse() * p2->estimate().so3()).log();
+    Mat3d       RiT = p1->estimate().so3().inverse().matrix();
+    const Vec3d ev  = RiT * (v2->estimate() - v1->estimate() - grav_ * dt_) - dv;
+    const Vec3d ep  = RiT * (p2->estimate().translation() - p1->estimate().translation() - v1->estimate() * dt_ -
                             grav_ * dt_ * dt_ / 2) -
                      dp;
     _error << er, ev, ep;
 }
 
-void EdgeInertial::linearizeOplus() {
-    auto* p1 = dynamic_cast<const VertexPose*>(_vertices[0]);
-    auto* v1 = dynamic_cast<const VertexVelocity*>(_vertices[1]);
+void EdgeInertial::linearizeOplus()
+{
+    auto* p1  = dynamic_cast<const VertexPose*>(_vertices[0]);
+    auto* v1  = dynamic_cast<const VertexVelocity*>(_vertices[1]);
     auto* bg1 = dynamic_cast<const VertexGyroBias*>(_vertices[2]);
     auto* ba1 = dynamic_cast<const VertexAccBias*>(_vertices[3]);
-    auto* p2 = dynamic_cast<const VertexPose*>(_vertices[4]);
-    auto* v2 = dynamic_cast<const VertexVelocity*>(_vertices[5]);
+    auto* p2  = dynamic_cast<const VertexPose*>(_vertices[4]);
+    auto* v2  = dynamic_cast<const VertexVelocity*>(_vertices[5]);
 
-    Vec3d bg = bg1->estimate();
-    Vec3d ba = ba1->estimate();
+    Vec3d bg  = bg1->estimate();
+    Vec3d ba  = ba1->estimate();
     Vec3d dbg = bg - preint_->bg_;
 
     // 一些中间符号
-    const SO3 R1 = p1->estimate().so3();
+    const SO3 R1  = p1->estimate().so3();
     const SO3 R1T = R1.inverse();
-    const SO3 R2 = p2->estimate().so3();
+    const SO3 R2  = p2->estimate().so3();
 
     auto dR_dbg = preint_->dR_dbg_;
     auto dv_dbg = preint_->dV_dbg_;
@@ -68,9 +72,9 @@ void EdgeInertial::linearizeOplus() {
     Vec3d pi = p1->estimate().translation();
     Vec3d pj = p2->estimate().translation();
 
-    const SO3 dR = preint_->GetDeltaRotation(bg);
-    const SO3 eR = SO3(dR).inverse() * R1T * R2;
-    const Vec3d er = eR.log();
+    const SO3   dR    = preint_->GetDeltaRotation(bg);
+    const SO3   eR    = SO3(dR).inverse() * R1T * R2;
+    const Vec3d er    = eR.log();
     const Mat3d invJr = SO3::jr_inv(eR);
 
     /// 雅可比矩阵
