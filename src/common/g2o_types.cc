@@ -45,7 +45,7 @@ void EdgePriorPoseNavState::linearizeOplus()
     _jacobianOplus[3].setZero();
     _jacobianOplus[3].block<3, 3>(12, 0) = Mat3d::Identity();  // dba/dba
 
-    CheckJacobian(this, _jacobianOplus, "EdgePriorPoseNavState", true);
+    CheckJacobian(this, _jacobianOplus, "EdgePriorPoseNavState", false);
 }
 
 }  // namespace sad

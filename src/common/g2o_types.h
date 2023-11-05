@@ -153,7 +153,7 @@ public:
         _jacobianOplusXi = -Mat3d::Identity();
         _jacobianOplusXj.setIdentity();
         std::vector<Eigen::MatrixXd> jacobians{_jacobianOplusXi, _jacobianOplusXj};
-        CheckJacobian(this, jacobians, "EdgeGyroRW", true);
+        CheckJacobian(this, jacobians, "EdgeGyroRW", false);
     }
 
     Eigen::Matrix<double, 6, 6> GetHessian()
@@ -200,7 +200,7 @@ public:
         _jacobianOplusXj.setIdentity();
 
         std::vector<Eigen::MatrixXd> jacobians{_jacobianOplusXi, _jacobianOplusXj};
-        CheckJacobian(this, jacobians, "EdgeAccRW", true);
+        CheckJacobian(this, jacobians, "EdgeAccRW", false);
     }
 
     Eigen::Matrix<double, 6, 6> GetHessian()
@@ -283,7 +283,7 @@ public:
         _jacobianOplusXi.block<3, 3>(3, 3) = Mat3d::Identity();                                              // dp/dp
 
         std::vector<Eigen::MatrixXd> jacobians{_jacobianOplusXi};
-        CheckJacobian(this, jacobians, "EdgeGNSS", true);
+        CheckJacobian(this, jacobians, "EdgeGNSS", false);
     }
 
     Mat6d GetHessian()
@@ -456,7 +456,7 @@ public:
         _jacobianOplusXi.setIdentity();
 
         std::vector<Eigen::MatrixXd> jacobians{_jacobianOplusXi};
-        CheckJacobian(this, jacobians, "EdgeEncoder3D", true);
+        CheckJacobian(this, jacobians, "EdgeEncoder3D", false);
     }
 
     virtual bool read(std::istream& in)
