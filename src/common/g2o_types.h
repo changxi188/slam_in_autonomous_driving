@@ -11,6 +11,7 @@
 #include <g2o/core/base_vertex.h>
 #include <g2o/core/robust_kernel.h>
 
+#include "common/check_jacbian.hpp"
 #include "common/gnss.h"
 #include "common/nav_state.h"
 
@@ -151,6 +152,8 @@ public:
     {
         _jacobianOplusXi = -Mat3d::Identity();
         _jacobianOplusXj.setIdentity();
+        std::vector<Eigen::MatrixXd> jacobians{_jacobianOplusXi, _jacobianOplusXj};
+        CheckJacobian(this, jacobians, "EdgeGyroRW", true);
     }
 
     Eigen::Matrix<double, 6, 6> GetHessian()
@@ -195,6 +198,9 @@ public:
     {
         _jacobianOplusXi = -Mat3d::Identity();
         _jacobianOplusXj.setIdentity();
+
+        std::vector<Eigen::MatrixXd> jacobians{_jacobianOplusXi, _jacobianOplusXj};
+        CheckJacobian(this, jacobians, "EdgeAccRW", true);
     }
 
     Eigen::Matrix<double, 6, 6> GetHessian()
@@ -275,6 +281,9 @@ public:
         _jacobianOplusXi.setZero();
         _jacobianOplusXi.block<3, 3>(0, 0) = (_measurement.so3().inverse() * v->estimate().so3()).jr_inv();  // dR/dR
         _jacobianOplusXi.block<3, 3>(3, 3) = Mat3d::Identity();                                              // dp/dp
+
+        std::vector<Eigen::MatrixXd> jacobians{_jacobianOplusXi};
+        CheckJacobian(this, jacobians, "EdgeGNSS", true);
     }
 
     Mat6d GetHessian()
@@ -445,6 +454,9 @@ public:
     void linearizeOplus() override
     {
         _jacobianOplusXi.setIdentity();
+
+        std::vector<Eigen::MatrixXd> jacobians{_jacobianOplusXi};
+        CheckJacobian(this, jacobians, "EdgeEncoder3D", true);
     }
 
     virtual bool read(std::istream& in)

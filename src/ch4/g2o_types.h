@@ -16,7 +16,6 @@
 
 namespace sad
 {
-
 /// 与预积分相关的vertex, edge
 /**
  * 预积分边

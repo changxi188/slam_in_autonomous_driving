@@ -73,6 +73,8 @@ int main(int argc, char** argv)
         ui->Init();
     }
 
+    sleep(3);
+
     /// 设置各类回调函数
     io.SetIMUProcessFunc([&](const sad::IMU& imu) {
           /// IMU 处理函数
@@ -92,6 +94,7 @@ int main(int argc, char** argv)
               options.gravity_                   = imu_init.GetGravity();
               gins.SetOptions(options);
               imu_inited = true;
+              sleep(1);
               return;
           }
 
@@ -109,7 +112,7 @@ int main(int argc, char** argv)
           if (ui)
           {
               ui->UpdateNavState(state);
-              usleep(5e2);
+              usleep(2e2);
           }
       })
         .SetGNSSProcessFunc([&](const sad::GNSS& gnss) {

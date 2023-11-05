@@ -15,19 +15,6 @@
 
 namespace sad
 {
-
-void GinsPreInteg::AddImu(const IMU& imu)
-{
-    if (first_gnss_received_ && first_imu_received_)
-    {
-        pre_integ_->Integrate(imu, imu.timestamp_ - last_imu_.timestamp_);
-    }
-
-    first_imu_received_ = true;
-    last_imu_           = imu;
-    current_time_       = imu.timestamp_;
-}
-
 void GinsPreInteg::SetOptions(sad::GinsPreInteg::Options options)
 {
     double bg_rw2 = 1.0 / (options_.bias_gyro_var_ * options_.bias_gyro_var_);
@@ -52,6 +39,18 @@ void GinsPreInteg::SetOptions(sad::GinsPreInteg::Options options)
         this_frame_->bg_ = options_.preinteg_options_.init_bg_;
         this_frame_->ba_ = options_.preinteg_options_.init_ba_;
     }
+}
+
+void GinsPreInteg::AddImu(const IMU& imu)
+{
+    if (first_gnss_received_ && first_imu_received_)
+    {
+        pre_integ_->Integrate(imu, imu.timestamp_ - last_imu_.timestamp_);
+    }
+
+    first_imu_received_ = true;
+    last_imu_           = imu;
+    current_time_       = imu.timestamp_;
 }
 
 void GinsPreInteg::AddGnss(const GNSS& gnss)

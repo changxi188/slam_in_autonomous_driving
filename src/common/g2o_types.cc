@@ -6,7 +6,6 @@
 
 namespace sad
 {
-
 EdgePriorPoseNavState::EdgePriorPoseNavState(const NavStated& state, const Mat15d& info)
 {
     resize(4);
@@ -45,6 +44,8 @@ void EdgePriorPoseNavState::linearizeOplus()
     _jacobianOplus[2].block<3, 3>(9, 0) = Mat3d::Identity();  // dbg/dbg
     _jacobianOplus[3].setZero();
     _jacobianOplus[3].block<3, 3>(12, 0) = Mat3d::Identity();  // dba/dba
+
+    CheckJacobian(this, _jacobianOplus, "EdgePriorPoseNavState", true);
 }
 
 }  // namespace sad

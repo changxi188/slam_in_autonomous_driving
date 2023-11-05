@@ -27,109 +27,116 @@
 template <int D, typename E, typename VertexXiType>
 void BaseUnaryEdge<D, E, VertexXiType>::resize(size_t size)
 {
-  assert(size == 1 && "error resizing unary edge where size != 1");
-  BaseEdge<D, E>::resize(size);
+    assert(size == 1 && "error resizing unary edge where size != 1");
+    BaseEdge<D, E>::resize(size);
 }
 
 template <int D, typename E, typename VertexXiType>
 bool BaseUnaryEdge<D, E, VertexXiType>::allVerticesFixed() const
 {
-  return static_cast<const VertexXiType*> (_vertices[0])->fixed();
+    return static_cast<const VertexXiType*>(_vertices[0])->fixed();
 }
 
 template <int D, typename E, typename VertexXiType>
 OptimizableGraph::Vertex* BaseUnaryEdge<D, E, VertexXiType>::createVertex(int i)
 {
-  if (i!=0)
-    return nullptr;
-  return new VertexXiType();
+    if (i != 0)
+        return nullptr;
+    return new VertexXiType();
 }
 
 template <int D, typename E, typename VertexXiType>
 void BaseUnaryEdge<D, E, VertexXiType>::constructQuadraticForm()
 {
-  VertexXiType* from=static_cast<VertexXiType*>(_vertices[0]);
+    VertexXiType* from = static_cast<VertexXiType*>(_vertices[0]);
 
-  // chain rule to get the Jacobian of the nodes in the manifold domain
-  const JacobianXiOplusType& A = jacobianOplusXi();
-  const InformationType& omega = _information;
+    // chain rule to get the Jacobian of the nodes in the manifold domain
+    const JacobianXiOplusType& A     = jacobianOplusXi();
+    const InformationType&     omega = _information;
 
-  bool istatus = !from->fixed();
-  if (istatus) {
+    bool istatus = !from->fixed();
+    if (istatus)
+    {
 #ifdef G2O_OPENMP
-    from->lockQuadraticForm();
+        from->lockQuadraticForm();
 #endif
-    if (this->robustKernel()) {
-      number_t error = this->chi2();
-      Vector3 rho;
-      this->robustKernel()->robustify(error, rho);
-      InformationType weightedOmega = this->robustInformation(rho);
+        if (this->robustKernel())
+        {
+            number_t error = this->chi2();
+            Vector3  rho;
+            this->robustKernel()->robustify(error, rho);
+            InformationType weightedOmega = this->robustInformation(rho);
 
-      from->b().noalias() -= rho[1] * A.transpose() * omega * _error;
-      from->A().noalias() += A.transpose() * weightedOmega * A;
-    } else {
-      from->b().noalias() -= A.transpose() * omega * _error;
-      from->A().noalias() += A.transpose() * omega * A;
+            from->b().noalias() -= rho[1] * A.transpose() * omega * _error;
+            from->A().noalias() += A.transpose() * weightedOmega * A;
+        }
+        else
+        {
+            from->b().noalias() -= A.transpose() * omega * _error;
+            from->A().noalias() += A.transpose() * omega * A;
+        }
+#ifdef G2O_OPENMP
+        from->unlockQuadraticForm();
+#endif
     }
-#ifdef G2O_OPENMP
-    from->unlockQuadraticForm();
-#endif
-  }
 }
 
 template <int D, typename E, typename VertexXiType>
 void BaseUnaryEdge<D, E, VertexXiType>::linearizeOplus(JacobianWorkspace& jacobianWorkspace)
 {
-  new (&_jacobianOplusXi) JacobianXiOplusType(jacobianWorkspace.workspaceForVertex(0), D < 0 ? _dimension : D, VertexXiType::Dimension);
-  linearizeOplus();
+    new (&_jacobianOplusXi)
+        JacobianXiOplusType(jacobianWorkspace.workspaceForVertex(0), D < 0 ? _dimension : D, VertexXiType::Dimension);
+    linearizeOplus();
 }
 
 template <int D, typename E, typename VertexXiType>
 void BaseUnaryEdge<D, E, VertexXiType>::linearizeOplus()
 {
-  //Xi - estimate the jacobian numerically
-  VertexXiType* vi = static_cast<VertexXiType*>(_vertices[0]);
+    // Xi - estimate the jacobian numerically
+    VertexXiType* vi = static_cast<VertexXiType*>(_vertices[0]);
 
-  if (vi->fixed())
-    return;
+    if (vi->fixed())
+        return;
 
 #ifdef G2O_OPENMP
-  vi->lockQuadraticForm();
+    vi->lockQuadraticForm();
 #endif
 
-  const number_t delta = cst(1e-9);
-  const number_t scalar = 1 / (2*delta);
-  ErrorVector error1;
-  ErrorVector errorBeforeNumeric = _error;
+    const number_t delta  = cst(1e-9);
+    const number_t scalar = 1 / (2 * delta);
+    ErrorVector    error1;
+    ErrorVector    errorBeforeNumeric = _error;
 
-  number_t add_vi[VertexXiType::Dimension] = {};
+    number_t add_vi[VertexXiType::Dimension] = {};
 
-  // add small step along the unit vector in each dimension
-  for (int d = 0; d < VertexXiType::Dimension; ++d) {
-    vi->push();
-    add_vi[d] = delta;
-    vi->oplus(add_vi);
-    computeError();
-    error1 = _error;
-    vi->pop();
-    vi->push();
-    add_vi[d] = -delta;
-    vi->oplus(add_vi);
-    computeError();
-    vi->pop();
-    add_vi[d] = 0.0;
+    // add small step along the unit vector in each dimension
+    for (int d = 0; d < VertexXiType::Dimension; ++d)
+    {
+        vi->push();
+        add_vi[d] = delta;
+        vi->oplus(add_vi);
+        computeError();
+        error1 = _error;
+        vi->pop();
+        vi->push();
+        add_vi[d] = -delta;
+        vi->oplus(add_vi);
+        computeError();
+        vi->pop();
+        add_vi[d] = 0.0;
 
-    _jacobianOplusXi.col(d) = scalar * (error1 - _error);
-  } // end dimension
+        _jacobianOplusXi.col(d) = scalar * (error1 - _error);
+    }  // end dimension
 
-  _error = errorBeforeNumeric;
+    _error = errorBeforeNumeric;
 #ifdef G2O_OPENMP
-  vi->unlockQuadraticForm();
+    vi->unlockQuadraticForm();
 #endif
 }
 
 template <int D, typename E, typename VertexXiType>
 void BaseUnaryEdge<D, E, VertexXiType>::initialEstimate(const OptimizableGraph::VertexSet&, OptimizableGraph::Vertex*)
 {
-  std::cerr << __PRETTY_FUNCTION__ << " is not implemented, please give implementation in your derived class" << std::endl;
+    std::cerr << __PRETTY_FUNCTION__ << " is not implemented, please give implementation in your derived class"
+              << std::endl;
 }

@@ -3,11 +3,11 @@
 //
 
 #include "ch4/g2o_types.h"
+#include "common/check_jacbian.hpp"
 #include "common/g2o_types.h"
 
 namespace sad
 {
-
 EdgeInertial::EdgeInertial(std::shared_ptr<IMUPreintegration> preinteg, const Vec3d& gravity, double weight)
   : preint_(preinteg), dt_(preinteg->dt_)
 {
@@ -137,6 +137,8 @@ void EdgeInertial::linearizeOplus()
     _jacobianOplus[5].setZero();
     // dv/dv2, 4,46b
     _jacobianOplus[5].block<3, 3>(3, 0) = R1T.matrix();  // OK
+
+    CheckJacobian(this, _jacobianOplus, "EdgeInertial", false);
 }
 
 }  // namespace sad
