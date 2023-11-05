@@ -18,7 +18,6 @@
 #include "ch4/imu_preintegration.h"
 namespace sad
 {
-
 /**
  * 使用预积分优化的GINS
  *
@@ -113,10 +112,11 @@ private:
     /// 两帧GNSS观测
     GNSS last_gnss_;
     GNSS this_gnss_;
+    bool gnss_optmize_ = false;
 
     IMU  last_imu_;   // 上时刻IMU
     Odom last_odom_;  // 上时刻odom
-    bool last_odom_set_ = false;
+    bool odom_optimize_ = false;
 
     /// 标志位
     bool first_gnss_received_ = false;  // 是否已收到第一个gnss信号

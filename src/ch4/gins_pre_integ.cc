@@ -15,7 +15,6 @@
 
 namespace sad
 {
-
 void GinsPreInteg::AddImu(const IMU& imu)
 {
     if (first_gnss_received_ && first_imu_received_)
@@ -90,6 +89,7 @@ void GinsPreInteg::AddGnss(const GNSS& gnss)
     current_time_ = gnss.unix_time_;
     *this_frame_  = pre_integ_->Predict(*last_frame_, options_.gravity_);
 
+    gnss_optmize_ = true;
     Optimize();
 
     last_frame_ = this_frame_;
@@ -98,8 +98,19 @@ void GinsPreInteg::AddGnss(const GNSS& gnss)
 
 void GinsPreInteg::AddOdom(const sad::Odom& odom)
 {
-    last_odom_     = odom;
-    last_odom_set_ = true;
+    this_frame_ = std::make_shared<NavStated>(current_time_);
+    last_odom_  = odom;
+
+    // 积分到GNSS时刻
+    pre_integ_->Integrate(last_imu_, odom.timestamp_ - current_time_);
+
+    current_time_ = odom.timestamp_;
+    *this_frame_  = pre_integ_->Predict(*last_frame_, options_.gravity_);
+
+    odom_optimize_ = true;
+    Optimize();
+
+    last_frame_ = this_frame_;
 }
 
 void GinsPreInteg::Optimize()
@@ -195,19 +206,23 @@ void GinsPreInteg::Optimize()
     optimizer.addEdge(edge_prior);
 
     // GNSS边
-    auto edge_gnss0 = new EdgeGNSS(v0_pose, last_gnss_.utm_pose_);
-    edge_gnss0->setInformation(options_.gnss_info_);
-    optimizer.addEdge(edge_gnss0);
+    // auto edge_gnss0 = new EdgeGNSS(v0_pose, last_gnss_.utm_pose_);
+    // edge_gnss0->setInformation(options_.gnss_info_);
+    // optimizer.addEdge(edge_gnss0);
 
-    auto edge_gnss1 = new EdgeGNSS(v1_pose, this_gnss_.utm_pose_);
-    edge_gnss1->setInformation(options_.gnss_info_);
-    optimizer.addEdge(edge_gnss1);
+    if (gnss_optmize_)
+    {
+        auto edge_gnss1 = new EdgeGNSS(v1_pose, this_gnss_.utm_pose_);
+        edge_gnss1->setInformation(options_.gnss_info_);
+        optimizer.addEdge(edge_gnss1);
+        gnss_optmize_ = false;
+    }
 
     // Odom边
     EdgeEncoder3D* edge_odom = nullptr;
     Vec3d          vel_world = Vec3d::Zero();
     Vec3d          vel_odom  = Vec3d::Zero();
-    if (last_odom_set_)
+    if (odom_optimize_)
     {
         // velocity obs
         double velo_l =
@@ -223,7 +238,7 @@ void GinsPreInteg::Optimize()
         optimizer.addEdge(edge_odom);
 
         // 重置odom数据到达标志位，等待最新的odom数据
-        last_odom_set_ = false;
+        odom_optimize_ = false;
     }
 
     optimizer.setVerbose(options_.verbose_);
@@ -236,7 +251,7 @@ void GinsPreInteg::Optimize()
         LOG(INFO) << "chi2/error: ";
         LOG(INFO) << "preintegration: " << edge_inertial->chi2() << "/" << edge_inertial->error().transpose();
         // LOG(INFO) << "gnss0: " << edge_gnss0->chi2() << ", " << edge_gnss0->error().transpose();
-        LOG(INFO) << "gnss1: " << edge_gnss1->chi2() << ", " << edge_gnss1->error().transpose();
+        // LOG(INFO) << "gnss1: " << edge_gnss1->chi2() << ", " << edge_gnss1->error().transpose();
         LOG(INFO) << "bias: " << edge_gyro_rw->chi2() << "/" << edge_acc_rw->error().transpose();
         LOG(INFO) << "prior: " << edge_prior->chi2() << "/" << edge_prior->error().transpose();
         if (edge_odom)

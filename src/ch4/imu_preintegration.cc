@@ -3,7 +3,6 @@
 
 namespace sad
 {
-
 IMUPreintegration::IMUPreintegration(Options options)
 {
     bg_             = options.init_bg_;

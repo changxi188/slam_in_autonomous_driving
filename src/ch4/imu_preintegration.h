@@ -12,7 +12,6 @@
 
 namespace sad
 {
-
 /**
  * IMU 预积分器
  *

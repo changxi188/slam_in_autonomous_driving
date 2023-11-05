@@ -109,9 +109,20 @@ int main(int argc, char** argv)
           if (ui)
           {
               ui->UpdateNavState(state);
-              usleep(5e2);
+              usleep(9e3);
           }
       })
+        .SetOdomProcessFunc([&](const sad::Odom& odom) {
+            if (!imu_init.InitSuccess())
+            {
+                imu_init.AddOdom(odom);
+            }
+
+            if (imu_inited && gnss_inited)
+            {
+                gins.AddOdom(odom);
+            }
+        })
         .SetGNSSProcessFunc([&](const sad::GNSS& gnss) {
             /// GNSS 处理函数
             if (!imu_inited)
@@ -140,17 +151,9 @@ int main(int argc, char** argv)
             if (ui)
             {
                 ui->UpdateNavState(state);
-                usleep(1e3);
+                usleep(3e3);
             }
             gnss_inited = true;
-        })
-        .SetOdomProcessFunc([&](const sad::Odom& odom) {
-            imu_init.AddOdom(odom);
-
-            if (imu_inited && gnss_inited)
-            {
-                gins.AddOdom(odom);
-            }
         })
         .Go();
 
