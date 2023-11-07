@@ -20,12 +20,14 @@ DEFINE_string(first_scan_path, "./data/ch5/first.pcd", "第一个点云路径");
 DEFINE_string(second_scan_path, "./data/ch5/second.pcd", "第二个点云路径");
 DEFINE_double(ANN_alpha, 1.0, "AAN的比例因子");
 
-TEST(CH5_TEST, BFNN) {
+TEST(CH5_TEST, BFNN)
+{
     sad::CloudPtr first(new sad::PointCloudType), second(new sad::PointCloudType);
     pcl::io::loadPCDFile(FLAGS_first_scan_path, *first);
     pcl::io::loadPCDFile(FLAGS_second_scan_path, *second);
 
-    if (first->empty() || second->empty()) {
+    if (first->empty() || second->empty())
+    {
         LOG(ERROR) << "cannot load cloud";
         FAIL();
     }
@@ -59,7 +61,8 @@ TEST(CH5_TEST, BFNN) {
  * @param esti  估计
  */
 void EvaluateMatches(const std::vector<std::pair<size_t, size_t>>& truth,
-                     const std::vector<std::pair<size_t, size_t>>& esti) {
+                     const std::vector<std::pair<size_t, size_t>>& esti)
+{
     int fp = 0;  // false-positive，esti存在但truth中不存在
     int fn = 0;  // false-negative, truth存在但esti不存在
 
@@ -71,33 +74,40 @@ void EvaluateMatches(const std::vector<std::pair<size_t, size_t>>& truth,
     };
 
     int effective_esti = 0;
-    for (const auto& d : esti) {
-        if (d.first != sad::math::kINVALID_ID && d.second != sad::math::kINVALID_ID) {
+    for (const auto& d : esti)
+    {
+        if (d.first != sad::math::kINVALID_ID && d.second != sad::math::kINVALID_ID)
+        {
             effective_esti++;
 
-            if (!exist(d, truth)) {
+            if (!exist(d, truth))
+            {
                 fp++;
             }
         }
     }
 
-    for (const auto& d : truth) {
-        if (!exist(d, esti)) {
+    for (const auto& d : truth)
+    {
+        if (!exist(d, esti))
+        {
             fn++;
         }
     }
 
     float precision = 1.0 - float(fp) / effective_esti;
-    float recall = 1.0 - float(fn) / truth.size();
+    float recall    = 1.0 - float(fn) / truth.size();
     LOG(INFO) << "precision: " << precision << ", recall: " << recall << ", fp: " << fp << ", fn: " << fn;
 }
 
-TEST(CH5_TEST, GRID_NN) {
+TEST(CH5_TEST, GRID_NN)
+{
     sad::CloudPtr first(new sad::PointCloudType), second(new sad::PointCloudType);
     pcl::io::loadPCDFile(FLAGS_first_scan_path, *first);
     pcl::io::loadPCDFile(FLAGS_second_scan_path, *second);
 
-    if (first->empty() || second->empty()) {
+    if (first->empty() || second->empty())
+    {
         LOG(ERROR) << "cannot load cloud";
         FAIL();
     }
@@ -175,8 +185,9 @@ TEST(CH5_TEST, GRID_NN) {
     SUCCEED();
 }
 
-TEST(CH5_TEST, KDTREE_BASICS) {
-    sad::CloudPtr cloud(new sad::PointCloudType);
+TEST(CH5_TEST, KDTREE_BASICS)
+{
+    sad::CloudPtr  cloud(new sad::PointCloudType);
     sad::PointType p1, p2, p3, p4;
     p1.x = 0;
     p1.y = 0;
@@ -206,12 +217,14 @@ TEST(CH5_TEST, KDTREE_BASICS) {
     SUCCEED();
 }
 
-TEST(CH5_TEST, KDTREE_KNN) {
+TEST(CH5_TEST, KDTREE_KNN)
+{
     sad::CloudPtr first(new sad::PointCloudType), second(new sad::PointCloudType);
     pcl::io::loadPCDFile(FLAGS_first_scan_path, *first);
     pcl::io::loadPCDFile(FLAGS_second_scan_path, *second);
 
-    if (first->empty() || second->empty()) {
+    if (first->empty() || second->empty())
+    {
         LOG(ERROR) << "cannot load cloud";
         FAIL();
     }
@@ -245,18 +258,21 @@ TEST(CH5_TEST, KDTREE_KNN) {
     LOG(INFO) << "searching pcl";
     matches.clear();
     std::vector<int> search_indices(second->size());
-    for (int i = 0; i < second->points.size(); i++) {
+    for (int i = 0; i < second->points.size(); i++)
+    {
         search_indices[i] = i;
     }
 
-    std::vector<std::vector<int>> result_index;
+    std::vector<std::vector<int>>   result_index;
     std::vector<std::vector<float>> result_distance;
     sad::evaluate_and_call(
         [&]() { kdtree_pcl.nearestKSearch(*second, search_indices, 5, result_index, result_distance); },
         "Kd Tree 5NN in PCL", 1);
-    for (int i = 0; i < second->points.size(); i++) {
-        for (int j = 0; j < result_index[i].size(); ++j) {
-            int m = result_index[i][j];
+    for (int i = 0; i < second->points.size(); i++)
+    {
+        for (int j = 0; j < result_index[i].size(); ++j)
+        {
+            int    m = result_index[i][j];
             double d = result_distance[i][j];
             matches.push_back({m, i});
         }
@@ -268,8 +284,9 @@ TEST(CH5_TEST, KDTREE_KNN) {
     SUCCEED();
 }
 
-TEST(CH5_TEST, OCTREE_BASICS) {
-    sad::CloudPtr cloud(new sad::PointCloudType);
+TEST(CH5_TEST, OCTREE_BASICS)
+{
+    sad::CloudPtr  cloud(new sad::PointCloudType);
     sad::PointType p1, p2, p3, p4;
     p1.x = 0;
     p1.y = 0;
@@ -300,12 +317,14 @@ TEST(CH5_TEST, OCTREE_BASICS) {
     SUCCEED();
 }
 
-TEST(CH5_TEST, OCTREE_KNN) {
+TEST(CH5_TEST, OCTREE_KNN)
+{
     sad::CloudPtr first(new sad::PointCloudType), second(new sad::PointCloudType);
     pcl::io::loadPCDFile(FLAGS_first_scan_path, *first);
     pcl::io::loadPCDFile(FLAGS_second_scan_path, *second);
 
-    if (first->empty() || second->empty()) {
+    if (first->empty() || second->empty())
+    {
         LOG(ERROR) << "cannot load cloud";
         FAIL();
     }
@@ -337,9 +356,10 @@ TEST(CH5_TEST, OCTREE_KNN) {
     SUCCEED();
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     google::InitGoogleLogging(argv[0]);
-    FLAGS_stderrthreshold = google::INFO;
+    FLAGS_stderrthreshold  = google::INFO;
     FLAGS_colorlogtostderr = true;
 
     testing::InitGoogleTest(&argc, argv);

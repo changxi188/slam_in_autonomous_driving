@@ -10,6 +10,10 @@ add_library(${PROJECT_NAME}.tools
 
 target_link_libraries(${PROJECT_NAME}.tools
         ${third_party_libs}
+
+        ${PROJECT_SOURCE_DIR}/build/tbb_cmake_build/tbb_cmake_build_subdir_release/libtbb.so
+        ${PROJECT_SOURCE_DIR}/build/tbb_cmake_build/tbb_cmake_build_subdir_release/libtbbmalloc.so
+        ${PROJECT_SOURCE_DIR}/build/tbb_cmake_build/tbb_cmake_build_subdir_release/libtbbmalloc_proxy.so
         )
 
 add_executable(ui_test ui/ui_test.cc)
