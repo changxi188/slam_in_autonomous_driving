@@ -9,8 +9,8 @@
 
 /// 点云的一些工具函数
 
-namespace sad {
-
+namespace sad
+{
 /// 体素滤波
 void VoxelGrid(CloudPtr cloud, float voxel_size = 0.05);
 
@@ -18,8 +18,8 @@ void VoxelGrid(CloudPtr cloud, float voxel_size = 0.05);
 void RemoveGround(CloudPtr cloud, float z_min = 0.5);
 
 /// 写点云文件
-template<typename CloudType> 
-void SaveCloudToFile(const std::string &filePath, CloudType &cloud);
+template <typename CloudType>
+void SaveCloudToFile(const std::string& filePath, CloudType& cloud);
 
 }  // namespace sad
 

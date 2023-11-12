@@ -277,6 +277,7 @@ TEST(CH5_TEST, KDTREE_KNN)
             matches.push_back({m, i});
         }
     }
+
     EvaluateMatches(true_matches, matches);
 
     LOG(INFO) << "done.";

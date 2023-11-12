@@ -10,8 +10,8 @@
 
 #include <thread>
 
-namespace sad {
-
+namespace sad
+{
 /**
  * Brute-force Nearest Neighbour
  * @param cloud 点云
