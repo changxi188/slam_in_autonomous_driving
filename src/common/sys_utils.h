@@ -8,8 +8,8 @@
 #include <glog/logging.h>
 #include <chrono>
 
-namespace sad {
-
+namespace sad
+{
 // 一些系统相关函数，统计代码时间之类的功能
 
 /**
@@ -20,9 +20,11 @@ namespace sad {
  * @param times 调用次数
  */
 template <typename FuncT>
-void evaluate_and_call(FuncT&& func, const std::string& func_name = "", int times = 10) {
+void evaluate_and_call(FuncT&& func, const std::string& func_name = "", int times = 10)
+{
     double total_time = 0;
-    for (int i = 0; i < times; ++i) {
+    for (int i = 0; i < times; ++i)
+    {
         auto t1 = std::chrono::high_resolution_clock::now();
         func();
         auto t2 = std::chrono::high_resolution_clock::now();
