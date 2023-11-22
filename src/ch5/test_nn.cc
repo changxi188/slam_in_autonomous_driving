@@ -11,6 +11,7 @@
 #include "ch5/bfnn.h"
 #include "ch5/gridnn.hpp"
 #include "ch5/kdtree.h"
+#include "ch5/nanoflann.hpp"
 #include "ch5/octo_tree.h"
 #include "common/point_cloud_utils.h"
 #include "common/point_types.h"
@@ -233,18 +234,18 @@ TEST(CH5_TEST, KDTREE_KNN)
     sad::VoxelGrid(first);
     sad::VoxelGrid(second);
 
+    // 比较 bfnn
+    std::vector<std::pair<size_t, size_t>> true_matches;
+    sad::bfnn_cloud_mt_k(first, second, true_matches);
+    LOG(INFO) << "first size : " << first->size() << ", second size : " << second->size()
+              << ", true matches size : " << true_matches.size();
+
     sad::KdTree kdtree;
     sad::evaluate_and_call([&first, &kdtree]() { kdtree.BuildTree(first); }, "Kd Tree build", 1);
 
     kdtree.SetEnableANN(true, FLAGS_ANN_alpha);
 
     LOG(INFO) << "Kd tree leaves: " << kdtree.size() << ", points: " << first->size();
-
-    // 比较 bfnn
-    std::vector<std::pair<size_t, size_t>> true_matches;
-    sad::bfnn_cloud_mt_k(first, second, true_matches);
-    LOG(INFO) << "first size : " << first->size() << ", second size : " << second->size()
-              << ", true matches size : " << true_matches.size();
 
     // 对第2个点云执行knn
     std::vector<std::pair<size_t, size_t>> matches;
@@ -352,6 +353,139 @@ TEST(CH5_TEST, OCTREE_KNN)
     /// 比较真值
     std::vector<std::pair<size_t, size_t>> true_matches;
     sad::bfnn_cloud_mt_k(first, second, true_matches);
+    EvaluateMatches(true_matches, matches);
+
+    LOG(INFO) << "done.";
+
+    SUCCEED();
+}
+
+TEST(CH5_TEST, HOMEWORK_KDTREE_KNN)
+{
+    LOG(INFO) << "homework --- compare different kdtree and knn";
+    sad::CloudPtr first(new sad::PointCloudType), second(new sad::PointCloudType);
+    pcl::io::loadPCDFile(FLAGS_first_scan_path, *first);
+    pcl::io::loadPCDFile(FLAGS_second_scan_path, *second);
+
+    if (first->empty() || second->empty())
+    {
+        LOG(ERROR) << "cannot load cloud";
+        FAIL();
+    }
+
+    // voxel grid 至 0.05
+    sad::VoxelGrid(first);
+    sad::VoxelGrid(second);
+
+    // 比较 bfnn
+    std::vector<std::pair<size_t, size_t>> true_matches;
+    true_matches.clear();
+    sad::evaluate_and_call([&first, &second, &true_matches]() { sad::bfnn_cloud_mt_k(first, second, true_matches); },
+                           "暴力匹配（多线程）", 5);
+    LOG(INFO) << "first size : " << first->size() << ", second size : " << second->size()
+              << ", true matches size : " << true_matches.size();
+
+    // ---------------------------------------------------- nano kdtree ------------------------------------------------
+    // construct a nano version kd-tree
+    using nano_kd_tree_t =
+        nanoflann::KDTreeSingleIndexAdaptor<nanoflann::L2_Simple_Adaptor<float, nanoflann::PointCloud<float>>,
+                                            nanoflann::PointCloud<float>, 3>;
+
+    nanoflann::PointCloud<float> nano_flann_point_cloud_first;
+    nano_flann_point_cloud_first.pts.resize(first->size());
+    for (int i = 0; i < first->size(); i++)
+    {
+        nano_flann_point_cloud_first.pts[i].x = first->points[i].x;
+        nano_flann_point_cloud_first.pts[i].y = first->points[i].y;
+        nano_flann_point_cloud_first.pts[i].z = first->points[i].z;
+    }
+
+    nanoflann::PointCloud<float> nano_flann_point_cloud_second;
+    nano_flann_point_cloud_second.pts.resize(second->size());
+    for (int i = 0; i < second->size(); i++)
+    {
+        nano_flann_point_cloud_second.pts[i].x = second->points[i].x;
+        nano_flann_point_cloud_second.pts[i].y = second->points[i].y;
+        nano_flann_point_cloud_second.pts[i].z = second->points[i].z;
+    }
+
+    sad::evaluate_and_call(
+        [&nano_flann_point_cloud_first]() { nano_kd_tree_t index(3, nano_flann_point_cloud_first, {10}); },
+        "nano kd Tree build", 1);
+
+    nano_kd_tree_t nano_kd_tree(3, nano_flann_point_cloud_first, {10});
+
+    std::vector<std::pair<size_t, size_t>> matches;
+    sad::evaluate_and_call([&nano_flann_point_cloud_first, &nano_flann_point_cloud_second, &nano_kd_tree,
+                            &matches]() { nano_kd_tree.getClosestPointMT(nano_flann_point_cloud_second, matches, 5); },
+                           "nano Kd Tree 5NN 多线程", 1);
+    EvaluateMatches(true_matches, matches);
+
+    // ---------------------------------------------------- sad kdtree ------------------------------------------------
+    sad::KdTree kdtree;
+    sad::evaluate_and_call([&first, &kdtree]() { kdtree.BuildTree(first); }, "Kd Tree build", 1);
+
+    kdtree.SetEnableANN(true, FLAGS_ANN_alpha);
+
+    LOG(INFO) << "Kd tree leaves: " << kdtree.size() << ", points: " << first->size();
+
+    matches.clear();
+    sad::evaluate_and_call([&first, &second, &kdtree, &matches]() { kdtree.GetClosestPointMT(second, matches, 5); },
+                           "Kd Tree 5NN 多线程", 1);
+    EvaluateMatches(true_matches, matches);
+
+    // ---------------------------------------------------- pcl kdtree ------------------------------------------------
+    LOG(INFO) << "building kdtree pcl";
+    pcl::search::KdTree<sad::PointType> kdtree_pcl;
+    sad::evaluate_and_call([&first, &kdtree_pcl]() { kdtree_pcl.setInputCloud(first); }, "Kd Tree build", 1);
+
+    LOG(INFO) << "searching pcl";
+    matches.clear();
+    std::vector<int> search_indices(second->size());
+    for (int i = 0; i < second->points.size(); i++)
+    {
+        search_indices[i] = i;
+    }
+
+    std::vector<std::vector<int>>   result_index;
+    std::vector<std::vector<float>> result_distance;
+    sad::evaluate_and_call(
+        [&]() { kdtree_pcl.nearestKSearch(*second, search_indices, 5, result_index, result_distance); },
+        "Kd Tree 5NN in PCL", 1);
+    for (int i = 0; i < second->points.size(); i++)
+    {
+        for (int j = 0; j < result_index[i].size(); ++j)
+        {
+            int    m = result_index[i][j];
+            double d = result_distance[i][j];
+            matches.push_back({m, i});
+        }
+    }
+
+    EvaluateMatches(true_matches, matches);
+
+    // ---------------------------------------------------- sad octree ------------------------------------------------
+    sad::OctoTree octree;
+    sad::evaluate_and_call([&first, &octree]() { octree.BuildTree(first); }, "Octo Tree build", 1);
+
+    octree.SetApproximate(true, FLAGS_ANN_alpha);
+    LOG(INFO) << "Octo tree leaves: " << octree.size() << ", points: " << first->size();
+
+    matches.clear();
+    sad::evaluate_and_call([&first, &second, &octree, &matches]() { octree.GetClosestPointMT(second, matches, 5); },
+                           "Octo Tree 5NN 多线程", 1);
+    EvaluateMatches(true_matches, matches);
+
+    // ---------------------------------------------------- sad grid3 ------------------------------------------------
+    true_matches.clear();
+    sad::bfnn_cloud(first, second, true_matches);
+    sad::GridNN<3> grid3(0.1, sad::GridNN<3>::NearbyType::NEARBY6);
+
+    sad::evaluate_and_call([&first, &grid3]() { grid3.SetPointCloud(first); }, "Grid 3D build", 1);
+    matches.clear();
+    sad::evaluate_and_call(
+        [&first, &second, &grid3, &matches]() { grid3.GetClosestPointForCloudMT(first, second, matches); },
+        "Grid 3D 多线程", 10);
     EvaluateMatches(true_matches, matches);
 
     LOG(INFO) << "done.";
