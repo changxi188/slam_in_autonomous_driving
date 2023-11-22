@@ -243,6 +243,8 @@ TEST(CH5_TEST, KDTREE_KNN)
     // 比较 bfnn
     std::vector<std::pair<size_t, size_t>> true_matches;
     sad::bfnn_cloud_mt_k(first, second, true_matches);
+    LOG(INFO) << "first size : " << first->size() << ", second size : " << second->size()
+              << ", true matches size : " << true_matches.size();
 
     // 对第2个点云执行knn
     std::vector<std::pair<size_t, size_t>> matches;
