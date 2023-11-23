@@ -58,4 +58,5 @@ data/ch4/gins_preintg.txt
 core
 .cache/
 thirdparty/*
+dataset/
 
