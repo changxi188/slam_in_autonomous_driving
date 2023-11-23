@@ -10,19 +10,26 @@
 #include "common/eigen_types.h"
 #include "common/lidar_utils.h"
 
-namespace sad {
-
-class LikelihoodField {
-   public:
+namespace sad
+{
+class LikelihoodField
+{
+public:
     /// 2D 场的模板，在设置target scan或map的时候生成
-    struct ModelPoint {
-        ModelPoint(int dx, int dy, float res) : dx_(dx), dy_(dy), residual_(res) {}
-        int dx_ = 0;
-        int dy_ = 0;
+    struct ModelPoint
+    {
+        ModelPoint(int dx, int dy, float res) : dx_(dx), dy_(dy), residual_(res)
+        {
+        }
+        int   dx_       = 0;
+        int   dy_       = 0;
         float residual_ = 0;
     };
 
-    LikelihoodField() { BuildModel(); }
+    LikelihoodField()
+    {
+        BuildModel();
+    }
 
     /// 增加一个2D的目标scan
     void SetTargetScan(Scan2d::Ptr scan);
@@ -46,20 +53,26 @@ class LikelihoodField {
     /// 获取场函数，转换为RGB图像
     cv::Mat GetFieldImage();
 
-    bool HasOutsidePoints() const { return has_outside_pts_; }
+    bool HasOutsidePoints() const
+    {
+        return has_outside_pts_;
+    }
 
-    void SetPose(const SE2& pose) { pose_ = pose; }
+    void SetPose(const SE2& pose)
+    {
+        pose_ = pose;
+    }
 
-   private:
+private:
     void BuildModel();
 
-    SE2 pose_;  // T_W_S
+    SE2         pose_;  // T_W_S
     Scan2d::Ptr target_ = nullptr;
     Scan2d::Ptr source_ = nullptr;
 
-    std::vector<ModelPoint> model_;  // 2D 模板
-    cv::Mat field_;                  // 场函数
-    bool has_outside_pts_ = false;   // 是否含有出了这个场的点
+    std::vector<ModelPoint> model_;                    // 2D 模板
+    cv::Mat                 field_;                    // 场函数
+    bool                    has_outside_pts_ = false;  // 是否含有出了这个场的点
 
     // 参数配置
     inline static const float resolution_ = 20;  // 每米多少个像素

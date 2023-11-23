@@ -2,9 +2,9 @@
 // Created by xiang on 2022/4/7.
 //
 
-#include "loop_closing.h"
 #include "ch6/g2o_types.h"
 #include "lidar_2d_utils.h"
+#include "loop_closing.h"
 
 #include <glog/logging.h>
 #include <opencv2/core/core.hpp>
@@ -20,58 +20,69 @@
 
 #include <opencv2/opencv.hpp>
 
-namespace sad {
-
-void LoopClosing::AddFinishedSubmap(std::shared_ptr<Submap> submap) {
+namespace sad
+{
+void LoopClosing::AddFinishedSubmap(std::shared_ptr<Submap> submap)
+{
     auto mr_field = std::make_shared<MRLikelihoodField>();
     mr_field->SetPose(submap->GetPose());
     mr_field->SetFieldImageFromOccuMap(submap->GetOccuMap().GetOccupancyGrid());
     submap_to_field_.emplace(submap, mr_field);
 }
 
-void LoopClosing::AddNewSubmap(std::shared_ptr<Submap> submap) {
+void LoopClosing::AddNewSubmap(std::shared_ptr<Submap> submap)
+{
     submaps_.emplace(submap->GetId(), submap);
     last_submap_id_ = submap->GetId();
 }
 
-void LoopClosing::AddNewFrame(std::shared_ptr<Frame> frame) {
+void LoopClosing::AddNewFrame(std::shared_ptr<Frame> frame)
+{
     current_frame_ = frame;
-    if (!DetectLoopCandidates()) {
+    if (!DetectLoopCandidates())
+    {
         return;
     }
 
     MatchInHistorySubmaps();
 
-    if (has_new_loops_) {
+    if (has_new_loops_)
+    {
         Optimize();
     }
 }
 
-bool LoopClosing::DetectLoopCandidates() {
+bool LoopClosing::DetectLoopCandidates()
+{
     // 要求当前帧与历史submap有一定间隔
     has_new_loops_ = false;
-    if (last_submap_id_ < submap_gap_) {
+    if (last_submap_id_ < submap_gap_)
+    {
         return false;
     }
 
     current_candidates_.clear();
 
-    for (auto& sp : submaps_) {
-        if ((last_submap_id_ - sp.first) <= submap_gap_) {
+    for (auto& sp : submaps_)
+    {
+        if ((last_submap_id_ - sp.first) <= submap_gap_)
+        {
             // 不检查最近的几个submap
             continue;
         }
 
         // 如果这个submap和历史submap已经存在有效的关联，也忽略之
         auto hist_iter = loop_constraints_.find(std::pair<size_t, size_t>(sp.first, last_submap_id_));
-        if (hist_iter != loop_constraints_.end() && hist_iter->second.valid_) {
+        if (hist_iter != loop_constraints_.end() && hist_iter->second.valid_)
+        {
             continue;
         }
 
-        Vec2d center = sp.second->GetPose().translation();
-        Vec2d frame_pos = current_frame_->pose_.translation();
-        double dis = (center - frame_pos).norm();
-        if (dis < candidate_distance_th_) {
+        Vec2d  center    = sp.second->GetPose().translation();
+        Vec2d  frame_pos = current_frame_->pose_.translation();
+        double dis       = (center - frame_pos).norm();
+        if (dis < candidate_distance_th_)
+        {
             /// 如果这个frame离submap中心差距小于阈值，则检查
             LOG(INFO) << "taking " << current_frame_->keyframe_id_ << " with " << sp.first
                       << ", last submap id: " << last_submap_id_;
@@ -82,18 +93,21 @@ bool LoopClosing::DetectLoopCandidates() {
     return !current_candidates_.empty();
 }
 
-void LoopClosing::MatchInHistorySubmaps() {
+void LoopClosing::MatchInHistorySubmaps()
+{
     // 我们先把要检查的scan, pose和submap存到离线文件, 把mr match调完了再实际上线
     // current_frame_->Dump("./data/ch6/frame_" + std::to_string(current_frame_->id_) + ".txt");
 
-    for (const size_t& can : current_candidates_) {
+    for (const size_t& can : current_candidates_)
+    {
         auto mr = submap_to_field_.at(submaps_[can]);
         mr->SetSourceScan(current_frame_->scan_);
 
-        auto submap = submaps_[can];
-        SE2 pose_in_target_submap = submap->GetPose().inverse() * current_frame_->pose_;  // T_S1_C
+        auto submap                = submaps_[can];
+        SE2  pose_in_target_submap = submap->GetPose().inverse() * current_frame_->pose_;  // T_S1_C
 
-        if (mr->AlignG2O(pose_in_target_submap)) {
+        if (mr->AlignG2O(pose_in_target_submap))
+        {
             // set constraints from current submap to target submap
             // T_S1_S2 = T_S1_C * T_C_W * T_W_S2
             SE2 T_this_cur =
@@ -123,16 +137,18 @@ void LoopClosing::MatchInHistorySubmaps() {
     current_candidates_.clear();
 }
 
-void LoopClosing::Optimize() {
+void LoopClosing::Optimize()
+{
     // pose graph optimization
-    using BlockSolverType = g2o::BlockSolver<g2o::BlockSolverTraits<3, 1>>;
+    using BlockSolverType  = g2o::BlockSolver<g2o::BlockSolverTraits<3, 1>>;
     using LinearSolverType = g2o::LinearSolverCholmod<BlockSolverType::PoseMatrixType>;
-    auto* solver = new g2o::OptimizationAlgorithmLevenberg(
+    auto* solver           = new g2o::OptimizationAlgorithmLevenberg(
         g2o::make_unique<BlockSolverType>(g2o::make_unique<LinearSolverType>()));
     g2o::SparseOptimizer optimizer;
     optimizer.setAlgorithm(solver);
 
-    for (auto& sp : submaps_) {
+    for (auto& sp : submaps_)
+    {
         auto* v = new VertexSE2();
         v->setId(sp.first);
         v->setEstimate(sp.second->GetPose());
@@ -140,9 +156,10 @@ void LoopClosing::Optimize() {
     }
 
     /// 连续约束
-    for (int i = 0; i < last_submap_id_; ++i) {
+    for (int i = 0; i < last_submap_id_; ++i)
+    {
         auto first_submap = submaps_[i];
-        auto next_submap = submaps_[i + 1];
+        auto next_submap  = submaps_[i + 1];
 
         EdgeSE2* e = new EdgeSE2();
         e->setVertex(0, optimizer.vertex(i));
@@ -155,12 +172,14 @@ void LoopClosing::Optimize() {
 
     /// 回环约束
     std::map<std::pair<size_t, size_t>, EdgeSE2*> loop_edges;
-    for (auto& c : loop_constraints_) {
-        if (!c.second.valid_) {
+    for (auto& c : loop_constraints_)
+    {
+        if (!c.second.valid_)
+        {
             continue;
         }
 
-        auto first_submap = submaps_[c.first.first];
+        auto first_submap  = submaps_[c.first.first];
         auto second_submap = submaps_[c.first.second];
 
         EdgeSE2* e = new EdgeSE2();
@@ -183,14 +202,18 @@ void LoopClosing::Optimize() {
 
     // validate the loop constraints
     int inliers = 0;
-    for (auto& ep : loop_edges) {
-        if (ep.second->chi2() < loop_rk_delta_) {
+    for (auto& ep : loop_edges)
+    {
+        if (ep.second->chi2() < loop_rk_delta_)
+        {
             LOG(INFO) << "loop from " << ep.first.first << " to " << ep.first.second
                       << " is correct, chi2: " << ep.second->chi2();
             ep.second->setRobustKernel(nullptr);
             loop_constraints_.at(ep.first).valid_ = true;
             inliers++;
-        } else {
+        }
+        else
+        {
             ep.second->setLevel(1);
             LOG(INFO) << "loop from " << ep.first.first << " to " << ep.first.second
                       << " is invalid, chi2: " << ep.second->chi2();
@@ -200,7 +223,8 @@ void LoopClosing::Optimize() {
 
     optimizer.optimize(5);
 
-    for (auto& sp : submaps_) {
+    for (auto& sp : submaps_)
+    {
         VertexSE2* v = (VertexSE2*)optimizer.vertex(sp.first);
         sp.second->SetPose(v->estimate());
 
@@ -211,10 +235,14 @@ void LoopClosing::Optimize() {
     LOG(INFO) << "loop inliers: " << inliers << "/" << loop_constraints_.size();
 
     // 移除错误的匹配
-    for (auto iter = loop_constraints_.begin(); iter != loop_constraints_.end();) {
-        if (!iter->second.valid_) {
+    for (auto iter = loop_constraints_.begin(); iter != loop_constraints_.end();)
+    {
+        if (!iter->second.valid_)
+        {
             iter = loop_constraints_.erase(iter);
-        } else {
+        }
+        else
+        {
             iter++;
         }
     }
