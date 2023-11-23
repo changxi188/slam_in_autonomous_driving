@@ -14,14 +14,15 @@ DEFINE_string(method, "gauss-newton", "gauss-newton/g2o");
 
 /// 测试2D似然场法的ICP
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     google::InitGoogleLogging(argv[0]);
-    FLAGS_stderrthreshold = google::INFO;
+    FLAGS_stderrthreshold  = google::INFO;
     FLAGS_colorlogtostderr = true;
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     sad::RosbagIO rosbag_io(fLS::FLAGS_bag_path);
-    Scan2d::Ptr last_scan = nullptr, current_scan = nullptr;
+    Scan2d::Ptr   last_scan = nullptr, current_scan = nullptr;
 
     /// 我们将上一个scan与当前scan进行配准
     rosbag_io
@@ -32,7 +33,8 @@ int main(int argc, char** argv) {
                 current_scan = scan;
                 SE2 pose;
 
-                if (last_scan == nullptr) {
+                if (last_scan == nullptr)
+                {
                     last_scan = current_scan;
                     return true;
                 }
@@ -40,9 +42,12 @@ int main(int argc, char** argv) {
                 lf.SetTargetScan(last_scan);
                 lf.SetSourceScan(current_scan);
 
-                if (FLAGS_method == "gauss-newton") {
+                if (FLAGS_method == "gauss-newton")
+                {
                     lf.AlignGaussNewton(pose);
-                } else if (FLAGS_method == "g2o") {
+                }
+                else if (FLAGS_method == "g2o")
+                {
                     lf.AlignG2O(pose);
                 }
 

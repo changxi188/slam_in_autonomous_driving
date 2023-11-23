@@ -14,18 +14,20 @@ DEFINE_bool(with_loop_closing, false, "是否使用回环检测");
 
 /// 测试2D lidar SLAM
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     google::InitGoogleLogging(argv[0]);
-    FLAGS_stderrthreshold = google::INFO;
+    FLAGS_stderrthreshold  = google::INFO;
     FLAGS_colorlogtostderr = true;
     google::ParseCommandLineFlags(&argc, &argv, true);
 
-    sad::RosbagIO rosbag_io(fLS::FLAGS_bag_path);
+    sad::RosbagIO  rosbag_io(fLS::FLAGS_bag_path);
     sad::Mapping2D mapping;
 
     std::system("rm -rf ./data/ch6/*");
 
-    if (mapping.Init(FLAGS_with_loop_closing) == false) {
+    if (mapping.Init(FLAGS_with_loop_closing) == false)
+    {
         return -1;
     }
 

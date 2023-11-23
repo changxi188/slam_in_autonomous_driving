@@ -11,8 +11,8 @@
 #include <opencv2/core/core.hpp>
 
 /// 为2D lidar的一些辅助函数
-namespace sad {
-
+namespace sad
+{
 /**
  * 在image上绘制一个2D scan
  * @param scan

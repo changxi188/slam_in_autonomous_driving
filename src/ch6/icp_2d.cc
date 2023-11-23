@@ -9,42 +9,47 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/search/impl/kdtree.hpp>
 
-namespace sad {
+namespace sad
+{
+bool Icp2d::AlignGaussNewton(SE2& init_pose)
+{
+    int         iterations = 10;
+    double      cost = 0, lastCost = 0;
+    SE2         current_pose   = init_pose;
+    const float max_dis2       = 0.01;  // 最近邻时的最远距离（平方）
+    const int   min_effect_pts = 20;    // 最小有效点数
 
-bool Icp2d::AlignGaussNewton(SE2& init_pose) {
-    int iterations = 10;
-    double cost = 0, lastCost = 0;
-    SE2 current_pose = init_pose;
-    const float max_dis2 = 0.01;    // 最近邻时的最远距离（平方）
-    const int min_effect_pts = 20;  // 最小有效点数
-
-    for (int iter = 0; iter < iterations; ++iter) {
+    for (int iter = 0; iter < iterations; ++iter)
+    {
         Mat3d H = Mat3d::Zero();
         Vec3d b = Vec3d::Zero();
-        cost = 0;
+        cost    = 0;
 
         int effective_num = 0;  // 有效点数
 
         // 遍历source
-        for (size_t i = 0; i < source_scan_->ranges.size(); ++i) {
+        for (size_t i = 0; i < source_scan_->ranges.size(); ++i)
+        {
             float r = source_scan_->ranges[i];
-            if (r < source_scan_->range_min || r > source_scan_->range_max) {
+            if (r < source_scan_->range_min || r > source_scan_->range_max)
+            {
                 continue;
             }
 
-            float angle = source_scan_->angle_min + i * source_scan_->angle_increment;
-            float theta = current_pose.so2().log();
-            Vec2d pw = current_pose * Vec2d(r * std::cos(angle), r * std::sin(angle));
+            float   angle = source_scan_->angle_min + i * source_scan_->angle_increment;
+            float   theta = current_pose.so2().log();
+            Vec2d   pw    = current_pose * Vec2d(r * std::cos(angle), r * std::sin(angle));
             Point2d pt;
             pt.x = pw.x();
             pt.y = pw.y();
 
             // 最近邻
-            std::vector<int> nn_idx;
+            std::vector<int>   nn_idx;
             std::vector<float> dis;
             kdtree_.nearestKSearch(pt, 1, nn_idx, dis);
 
-            if (nn_idx.size() > 0 && dis[0] < max_dis2) {
+            if (nn_idx.size() > 0 && dis[0] < max_dis2)
+            {
                 effective_num++;
                 Mat32d J;
                 J << 1, 0, 0, 1, -r * std::sin(angle + theta), r * std::cos(angle + theta);
@@ -57,18 +62,21 @@ bool Icp2d::AlignGaussNewton(SE2& init_pose) {
             }
         }
 
-        if (effective_num < min_effect_pts) {
+        if (effective_num < min_effect_pts)
+        {
             return false;
         }
 
         // solve for dx
         Vec3d dx = H.ldlt().solve(b);
-        if (isnan(dx[0])) {
+        if (isnan(dx[0]))
+        {
             break;
         }
 
         cost /= effective_num;
-        if (iter > 0 && cost >= lastCost) {
+        if (iter > 0 && cost >= lastCost)
+        {
             break;
         }
 
@@ -76,7 +84,7 @@ bool Icp2d::AlignGaussNewton(SE2& init_pose) {
 
         current_pose.translation() += dx.head<2>();
         current_pose.so2() = current_pose.so2() * SO2::exp(dx[2]);
-        lastCost = cost;
+        lastCost           = cost;
     }
 
     init_pose = current_pose;
@@ -86,54 +94,62 @@ bool Icp2d::AlignGaussNewton(SE2& init_pose) {
     return true;
 }
 
-bool Icp2d::AlignGaussNewtonPoint2Plane(SE2& init_pose) {
-    int iterations = 10;
-    double cost = 0, lastCost = 0;
-    SE2 current_pose = init_pose;
-    const float max_dis = 0.3;      // 最近邻时的最远距离
-    const int min_effect_pts = 20;  // 最小有效点数
+bool Icp2d::AlignGaussNewtonPoint2Plane(SE2& init_pose)
+{
+    int         iterations = 10;
+    double      cost = 0, lastCost = 0;
+    SE2         current_pose   = init_pose;
+    const float max_dis        = 0.3;  // 最近邻时的最远距离
+    const int   min_effect_pts = 20;   // 最小有效点数
 
-    for (int iter = 0; iter < iterations; ++iter) {
+    for (int iter = 0; iter < iterations; ++iter)
+    {
         Mat3d H = Mat3d::Zero();
         Vec3d b = Vec3d::Zero();
-        cost = 0;
+        cost    = 0;
 
         int effective_num = 0;  // 有效点数
 
         // 遍历source
-        for (size_t i = 0; i < source_scan_->ranges.size(); ++i) {
+        for (size_t i = 0; i < source_scan_->ranges.size(); ++i)
+        {
             float r = source_scan_->ranges[i];
-            if (r < source_scan_->range_min || r > source_scan_->range_max) {
+            if (r < source_scan_->range_min || r > source_scan_->range_max)
+            {
                 continue;
             }
 
-            float angle = source_scan_->angle_min + i * source_scan_->angle_increment;
-            float theta = current_pose.so2().log();
-            Vec2d pw = current_pose * Vec2d(r * std::cos(angle), r * std::sin(angle));
+            float   angle = source_scan_->angle_min + i * source_scan_->angle_increment;
+            float   theta = current_pose.so2().log();
+            Vec2d   pw    = current_pose * Vec2d(r * std::cos(angle), r * std::sin(angle));
             Point2d pt;
             pt.x = pw.x();
             pt.y = pw.y();
 
             // 查找5个最近邻
-            std::vector<int> nn_idx;
+            std::vector<int>   nn_idx;
             std::vector<float> dis;
             kdtree_.nearestKSearch(pt, 5, nn_idx, dis);
 
             std::vector<Vec2d> effective_pts;  // 有效点
-            for (int j = 0; j < nn_idx.size(); ++j) {
-                if (dis[j] < max_dis) {
+            for (int j = 0; j < nn_idx.size(); ++j)
+            {
+                if (dis[j] < max_dis)
+                {
                     effective_pts.emplace_back(
                         Vec2d(target_cloud_->points[nn_idx[j]].x, target_cloud_->points[nn_idx[j]].y));
                 }
             }
 
-            if (effective_pts.size() < 3) {
+            if (effective_pts.size() < 3)
+            {
                 continue;
             }
 
             // 拟合直线，组装J、H和误差
             Vec3d line_coeffs;
-            if (math::FitLine2D(effective_pts, line_coeffs)) {
+            if (math::FitLine2D(effective_pts, line_coeffs))
+            {
                 effective_num++;
                 Vec3d J;
                 J << line_coeffs[0], line_coeffs[1],
@@ -147,18 +163,21 @@ bool Icp2d::AlignGaussNewtonPoint2Plane(SE2& init_pose) {
             }
         }
 
-        if (effective_num < min_effect_pts) {
+        if (effective_num < min_effect_pts)
+        {
             return false;
         }
 
         // solve for dx
         Vec3d dx = H.ldlt().solve(b);
-        if (isnan(dx[0])) {
+        if (isnan(dx[0]))
+        {
             break;
         }
 
         cost /= effective_num;
-        if (iter > 0 && cost >= lastCost) {
+        if (iter > 0 && cost >= lastCost)
+        {
             break;
         }
 
@@ -166,7 +185,7 @@ bool Icp2d::AlignGaussNewtonPoint2Plane(SE2& init_pose) {
 
         current_pose.translation() += dx.head<2>();
         current_pose.so2() = current_pose.so2() * SO2::exp(dx[2]);
-        lastCost = cost;
+        lastCost           = cost;
     }
 
     init_pose = current_pose;
@@ -176,15 +195,19 @@ bool Icp2d::AlignGaussNewtonPoint2Plane(SE2& init_pose) {
     return true;
 }
 
-void Icp2d::BuildTargetKdTree() {
-    if (target_scan_ == nullptr) {
+void Icp2d::BuildTargetKdTree()
+{
+    if (target_scan_ == nullptr)
+    {
         LOG(ERROR) << "target is not set";
         return;
     }
 
     target_cloud_.reset(new Cloud2d);
-    for (size_t i = 0; i < target_scan_->ranges.size(); ++i) {
-        if (target_scan_->ranges[i] < target_scan_->range_min || target_scan_->ranges[i] > target_scan_->range_max) {
+    for (size_t i = 0; i < target_scan_->ranges.size(); ++i)
+    {
+        if (target_scan_->ranges[i] < target_scan_->range_min || target_scan_->ranges[i] > target_scan_->range_max)
+        {
             continue;
         }
 
@@ -196,7 +219,7 @@ void Icp2d::BuildTargetKdTree() {
         target_cloud_->points.push_back(p);
     }
 
-    target_cloud_->width = target_cloud_->points.size();
+    target_cloud_->width    = target_cloud_->points.size();
     target_cloud_->is_dense = false;
     kdtree_.setInputCloud(target_cloud_);
 }

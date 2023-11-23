@@ -18,36 +18,45 @@
 #include "velodyne_msgs/VelodyneScan.h"
 
 /// 雷达扫描的一些消息定义和工具函数
-using Scan2d = sensor_msgs::LaserScan;
-using MultiScan2d = sensor_msgs::MultiEchoLaserScan;
-using PacketsMsg = velodyne_msgs::VelodyneScan;
+using Scan2d        = sensor_msgs::LaserScan;
+using MultiScan2d   = sensor_msgs::MultiEchoLaserScan;
+using PacketsMsg    = velodyne_msgs::VelodyneScan;
 using PacketsMsgPtr = boost::shared_ptr<PacketsMsg>;
 
-namespace sad {
-
-inline Scan2d::Ptr MultiToScan2d(MultiScan2d::Ptr mscan) {
+namespace sad
+{
+inline Scan2d::Ptr MultiToScan2d(MultiScan2d::Ptr mscan)
+{
     Scan2d::Ptr scan(new Scan2d);
-    scan->header = mscan->header;
-    scan->range_max = mscan->range_max;
-    scan->range_min = mscan->range_min;
+    scan->header          = mscan->header;
+    scan->range_max       = mscan->range_max;
+    scan->range_min       = mscan->range_min;
     scan->angle_increment = mscan->angle_increment;
-    scan->angle_max = mscan->angle_max;
-    scan->angle_min = mscan->angle_min;
-    for (auto r : mscan->ranges) {
-        if (r.echoes.empty()) {
+    scan->angle_max       = mscan->angle_max;
+    scan->angle_min       = mscan->angle_min;
+    for (auto r : mscan->ranges)
+    {
+        if (r.echoes.empty())
+        {
             scan->ranges.emplace_back(scan->range_max + 1.0);
-        } else {
+        }
+        else
+        {
             scan->ranges.emplace_back(r.echoes[0]);
         }
     }
-    for (auto i : mscan->intensities) {
-        if (i.echoes.empty()) {
+    for (auto i : mscan->intensities)
+    {
+        if (i.echoes.empty())
+        {
             scan->intensities.emplace_back(0);
-        } else {
+        }
+        else
+        {
             scan->intensities.emplace_back(i.echoes[0]);
         }
     }
-    scan->scan_time = mscan->scan_time;
+    scan->scan_time      = mscan->scan_time;
     scan->time_increment = mscan->time_increment;
 
     // limit range max
@@ -56,7 +65,8 @@ inline Scan2d::Ptr MultiToScan2d(MultiScan2d::Ptr mscan) {
 }
 
 /// ROS PointCloud2 转通常的pcl PointCloud
-inline CloudPtr PointCloud2ToCloudPtr(sensor_msgs::PointCloud2::Ptr msg) {
+inline CloudPtr PointCloud2ToCloudPtr(sensor_msgs::PointCloud2::Ptr msg)
+{
     CloudPtr cloud(new PointCloudType);
     pcl::fromROSMsg(*msg, *cloud);
     return cloud;
@@ -70,13 +80,15 @@ inline CloudPtr PointCloud2ToCloudPtr(sensor_msgs::PointCloud2::Ptr msg) {
  * @return
  */
 template <typename PointT = FullPointType>
-CloudPtr ConvertToCloud(typename pcl::PointCloud<PointT>::Ptr input) {
+CloudPtr ConvertToCloud(typename pcl::PointCloud<PointT>::Ptr input)
+{
     CloudPtr cloud(new PointCloudType);
-    for (auto& pt : input->points) {
+    for (auto& pt : input->points)
+    {
         PointType p;
-        p.x = pt.x;
-        p.y = pt.y;
-        p.z = pt.z;
+        p.x         = pt.x;
+        p.y         = pt.y;
+        p.z         = pt.z;
         p.intensity = pt.intensity;
         cloud->points.template emplace_back(p);
     }
@@ -85,7 +97,8 @@ CloudPtr ConvertToCloud(typename pcl::PointCloud<PointT>::Ptr input) {
 }
 
 /// 对点云进行voxel filter,指定分辨率
-inline CloudPtr VoxelCloud(CloudPtr cloud, float voxel_size = 0.1) {
+inline CloudPtr VoxelCloud(CloudPtr cloud, float voxel_size = 0.1)
+{
     pcl::VoxelGrid<PointType> voxel;
     voxel.setLeafSize(voxel_size, voxel_size, voxel_size);
     voxel.setInputCloud(cloud);
