@@ -2,6 +2,7 @@
 // Created by xiang on 2022/3/18.
 //
 
+#include <opencv2/highgui.hpp>
 #include "ch6/g2o_types.h"
 #include "ch6/likelihood_filed.h"
 

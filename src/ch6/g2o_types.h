@@ -15,70 +15,94 @@
 #include "common/eigen_types.h"
 #include "common/math_utils.h"
 
-namespace sad {
-
-class VertexSE2 : public g2o::BaseVertex<3, SE2> {
-   public:
+namespace sad
+{
+class VertexSE2 : public g2o::BaseVertex<3, SE2>
+{
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    void setToOriginImpl() override { _estimate = SE2(); }
-    void oplusImpl(const double* update) override {
+    void setToOriginImpl() override
+    {
+        _estimate = SE2();
+    }
+    void oplusImpl(const double* update) override
+    {
         _estimate.translation()[0] += update[0];
         _estimate.translation()[1] += update[1];
         _estimate.so2() = _estimate.so2() * SO2::exp(update[2]);
     }
 
-    bool read(std::istream& is) override { return true; }
-    bool write(std::ostream& os) const override { return true; }
+    bool read(std::istream& is) override
+    {
+        return true;
+    }
+    bool write(std::ostream& os) const override
+    {
+        return true;
+    }
 };
 
-class EdgeSE2LikelihoodFiled : public g2o::BaseUnaryEdge<1, double, VertexSE2> {
-   public:
+class EdgeSE2LikelihoodFiled : public g2o::BaseUnaryEdge<1, double, VertexSE2>
+{
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     EdgeSE2LikelihoodFiled(const cv::Mat& field_image, double range, double angle, float resolution = 10.0)
-        : field_image_(field_image), range_(range), angle_(angle), resolution_(resolution) {}
+      : field_image_(field_image), range_(range), angle_(angle), resolution_(resolution)
+    {
+    }
 
     /// 判定此条边是否在field image外面
-    bool IsOutSide() {
-        VertexSE2* v = (VertexSE2*)_vertices[0];
-        SE2 pose = v->estimate();
-        Vec2d pw = pose * Vec2d(range_ * std::cos(angle_), range_ * std::sin(angle_));
+    bool IsOutSide()
+    {
+        VertexSE2* v    = (VertexSE2*)_vertices[0];
+        SE2        pose = v->estimate();
+        Vec2d      pw   = pose * Vec2d(range_ * std::cos(angle_), range_ * std::sin(angle_));
         Vec2i pf = (pw * resolution_ + Vec2d(field_image_.rows / 2, field_image_.cols / 2)).cast<int>();  // 图像坐标
 
         if (pf[0] >= image_boarder_ && pf[0] < field_image_.cols - image_boarder_ && pf[1] >= image_boarder_ &&
-            pf[1] < field_image_.rows - image_boarder_) {
+            pf[1] < field_image_.rows - image_boarder_)
+        {
             return false;
-        } else {
+        }
+        else
+        {
             return true;
         }
     }
 
-    void computeError() override {
-        VertexSE2* v = (VertexSE2*)_vertices[0];
-        SE2 pose = v->estimate();
-        Vec2d pw = pose * Vec2d(range_ * std::cos(angle_), range_ * std::sin(angle_));
-        Vec2d pf =
+    void computeError() override
+    {
+        VertexSE2* v    = (VertexSE2*)_vertices[0];
+        SE2        pose = v->estimate();
+        Vec2d      pw   = pose * Vec2d(range_ * std::cos(angle_), range_ * std::sin(angle_));
+        Vec2d      pf =
             pw * resolution_ + Vec2d(field_image_.rows / 2, field_image_.cols / 2) - Vec2d(0.5, 0.5);  // 图像坐标
 
         if (pf[0] >= image_boarder_ && pf[0] < field_image_.cols - image_boarder_ && pf[1] >= image_boarder_ &&
-            pf[1] < field_image_.rows - image_boarder_) {
+            pf[1] < field_image_.rows - image_boarder_)
+        {
             _error[0] = math::GetPixelValue<float>(field_image_, pf[0], pf[1]);
-        } else {
+        }
+        else
+        {
             _error[0] = 0;
             setLevel(1);
         }
     }
 
-    void linearizeOplus() override {
-        VertexSE2* v = (VertexSE2*)_vertices[0];
-        SE2 pose = v->estimate();
-        float theta = pose.so2().log();
-        Vec2d pw = pose * Vec2d(range_ * std::cos(angle_), range_ * std::sin(angle_));
-        Vec2d pf =
+    void linearizeOplus() override
+    {
+        VertexSE2* v     = (VertexSE2*)_vertices[0];
+        SE2        pose  = v->estimate();
+        float      theta = pose.so2().log();
+        Vec2d      pw    = pose * Vec2d(range_ * std::cos(angle_), range_ * std::sin(angle_));
+        Vec2d      pf =
             pw * resolution_ + Vec2d(field_image_.rows / 2, field_image_.cols / 2) - Vec2d(0.5, 0.5);  // 图像坐标
 
         if (pf[0] >= image_boarder_ && pf[0] < field_image_.cols - image_boarder_ && pf[1] >= image_boarder_ &&
-            pf[1] < field_image_.rows - image_boarder_) {
+            pf[1] < field_image_.rows - image_boarder_)
+        {
             // 图像梯度
             float dx = 0.5 * (math::GetPixelValue<float>(field_image_, pf[0] + 1, pf[1]) -
                               math::GetPixelValue<float>(field_image_, pf[0] - 1, pf[1]));
@@ -88,20 +112,28 @@ class EdgeSE2LikelihoodFiled : public g2o::BaseUnaryEdge<1, double, VertexSE2> {
             _jacobianOplusXi << resolution_ * dx, resolution_ * dy,
                 -resolution_ * dx * range_ * std::sin(angle_ + theta) +
                     resolution_ * dy * range_ * std::cos(angle_ + theta);
-        } else {
+        }
+        else
+        {
             _jacobianOplusXi.setZero();
             setLevel(1);
         }
     }
 
-    bool read(std::istream& is) override { return true; }
-    bool write(std::ostream& os) const override { return true; }
+    bool read(std::istream& is) override
+    {
+        return true;
+    }
+    bool write(std::ostream& os) const override
+    {
+        return true;
+    }
 
-   private:
-    const cv::Mat& field_image_;
-    double range_ = 0;
-    double angle_ = 0;
-    float resolution_ = 10.0;
+private:
+    const cv::Mat&          field_image_;
+    double                  range_         = 0;
+    double                  angle_         = 0;
+    float                   resolution_    = 10.0;
     inline static const int image_boarder_ = 10;
 };
 
@@ -109,23 +141,33 @@ class EdgeSE2LikelihoodFiled : public g2o::BaseUnaryEdge<1, double, VertexSE2> {
  * SE2 pose graph使用
  * error = v1.inv * v2 * meas.inv
  */
-class EdgeSE2 : public g2o::BaseBinaryEdge<3, SE2, VertexSE2, VertexSE2> {
-   public:
+class EdgeSE2 : public g2o::BaseBinaryEdge<3, SE2, VertexSE2, VertexSE2>
+{
+public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    EdgeSE2() {}
+    EdgeSE2()
+    {
+    }
 
-    void computeError() override {
+    void computeError() override
+    {
         VertexSE2* v1 = (VertexSE2*)_vertices[0];
         VertexSE2* v2 = (VertexSE2*)_vertices[1];
-        _error = (v1->estimate().inverse() * v2->estimate() * measurement().inverse()).log();
+        _error        = (v1->estimate().inverse() * v2->estimate() * measurement().inverse()).log();
     }
 
     // TODO jacobian
 
-    bool read(std::istream& is) override { return true; }
-    bool write(std::ostream& os) const override { return true; }
+    bool read(std::istream& is) override
+    {
+        return true;
+    }
+    bool write(std::ostream& os) const override
+    {
+        return true;
+    }
 
-   private:
+private:
 };
 
 }  // namespace sad

@@ -94,7 +94,7 @@ bool Icp2d::AlignGaussNewton(SE2& init_pose)
     return true;
 }
 
-bool Icp2d::AlignGaussNewtonPoint2Plane(SE2& init_pose)
+bool Icp2d::AlignGaussNewtonPoint2Line(SE2& init_pose)
 {
     int         iterations = 10;
     double      cost = 0, lastCost = 0;

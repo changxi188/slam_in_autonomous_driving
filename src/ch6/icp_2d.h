@@ -41,15 +41,15 @@ public:
     /// 使用高斯牛顿法进行配准
     bool AlignGaussNewton(SE2& init_pose);
 
-    /// 使用高斯牛顿法进行配准, Point-to-Plane
-    bool AlignGaussNewtonPoint2Plane(SE2& init_pose);
+    /// 使用高斯牛顿法进行配准, Point-to-Line
+    bool AlignGaussNewtonPoint2Line(SE2& init_pose);
 
 private:
     // 建立目标点云的Kdtree
     void BuildTargetKdTree();
 
-    pcl::search::KdTree<Point2d> kdtree_;
-    Cloud2d::Ptr                 target_cloud_;  // PCL 形式的target cloud
+    pcl::search::KdTree<pcl::PointXY>  kdtree_;
+    pcl::PointCloud<pcl::PointXY>::Ptr target_cloud_;  // PCL 形式的target cloud
 
     Scan2d::Ptr target_scan_ = nullptr;
     Scan2d::Ptr source_scan_ = nullptr;
