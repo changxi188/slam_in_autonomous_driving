@@ -96,7 +96,7 @@ bool LoopClosing::DetectLoopCandidates()
 void LoopClosing::MatchInHistorySubmaps()
 {
     // 我们先把要检查的scan, pose和submap存到离线文件, 把mr match调完了再实际上线
-    // current_frame_->Dump("./data/ch6/frame_" + std::to_string(current_frame_->id_) + ".txt");
+    current_frame_->Dump("./data/ch6/frame_" + std::to_string(current_frame_->id_) + ".txt");
 
     for (const size_t& can : current_candidates_)
     {

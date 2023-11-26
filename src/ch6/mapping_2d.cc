@@ -38,25 +38,28 @@ bool Mapping2D::ProcessScan(Scan2d::Ptr scan)
     current_frame_      = std::make_shared<Frame>(scan);
     current_frame_->id_ = frame_id_++;
 
-    if (last_frame_)
+    if (first_scan_)
     {
-        // set pose from last frame
-        // current_frame_->pose_ = last_frame_->pose_;
-        current_frame_->pose_        = last_frame_->pose_ * motion_guess_;
-        current_frame_->pose_submap_ = last_frame_->pose_submap_;
+        AddKeyFrame();
+        current_submap_->AddScanInOccupancyMap(current_frame_);
+        motion_guess_ = SE2();
+        last_frame_   = current_frame_;
+
+        first_scan_ = false;
+
+        cv::imshow("global map", ShowGlobalMap());
+        cv::waitKey(10);
+        return true;
     }
 
-    // 利用scan matching来匹配地图
-    if (!first_scan_)
-    {
-        // 第一帧无法匹配，直接加入到occupancy map
-        current_submap_->MatchScan(current_frame_);
-    }
+    // set pose from last frame
+    // current_frame_->pose_ = last_frame_->pose_;
+    current_frame_->pose_        = last_frame_->pose_ * motion_guess_;
+    current_frame_->pose_submap_ = last_frame_->pose_submap_;
 
-    // current_submap_->AddScanInOccupancyMap(current_frame_);
-    first_scan_ = false;
-    bool is_kf  = IsKeyFrame();
+    current_submap_->MatchScan(current_frame_);
 
+    bool is_kf = IsKeyFrame();
     if (is_kf)
     {
         AddKeyFrame();
@@ -98,12 +101,8 @@ bool Mapping2D::ProcessScan(Scan2d::Ptr scan)
 
     cv::waitKey(10);
 
-    if (last_frame_)
-    {
-        motion_guess_ = last_frame_->pose_.inverse() * current_frame_->pose_;
-    }
-
-    last_frame_ = current_frame_;
+    motion_guess_ = last_frame_->pose_.inverse() * current_frame_->pose_;
+    last_frame_   = current_frame_;
 
     return true;
 }

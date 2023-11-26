@@ -14,7 +14,6 @@ DEFINE_string(bag_path, "./dataset/sad/2dmapping/floor1.bag", "数据包路径")
 DEFINE_string(method, "model/bresenham", "填充算法：model/bresenham");
 
 /// 测试2D似然场法的ICP
-
 int main(int argc, char** argv)
 {
     google::InitGoogleLogging(argv[0]);
@@ -25,33 +24,35 @@ int main(int argc, char** argv)
     sad::RosbagIO rosbag_io(fLS::FLAGS_bag_path);
 
     /// 测试单个scan生成出来的occupancy grid是否正确
-    rosbag_io
-        .AddScan2DHandle("/pavo_scan_bottom",
-                         [&](Scan2d::Ptr scan) {
-                             sad::OccupancyMap oc_map;
-                             if (FLAGS_method == "model")
-                             {
-                                 sad::evaluate_and_call(
-                                     [&]() {
-                                         oc_map.AddLidarFrame(std::make_shared<sad::Frame>(scan),
-                                                              sad::OccupancyMap::GridMethod::MODEL_POINTS);
-                                     },
-                                     "Occupancy with model points", 1);
-                             }
-                             else
-                             {
-                                 sad::evaluate_and_call(
-                                     [&]() {
-                                         oc_map.AddLidarFrame(std::make_shared<sad::Frame>(scan),
-                                                              sad::OccupancyMap::GridMethod::BRESENHAM);
-                                     },
-                                     "Occupancy with bresenham", 1);
-                             }
-                             cv::imshow("occupancy map", oc_map.GetOccupancyGridBlackWhite());
-                             cv::waitKey(10);
-                             return true;
-                         })
-        .Go();
+    std::function<bool(Scan2d::Ptr)> scan_2d_handle = [&](Scan2d::Ptr scan) {
+        sad::OccupancyMap oc_map;
+        if (FLAGS_method == "model")
+        {
+            sad::evaluate_and_call(
+                [&]() {
+                    oc_map.AddLidarFrame(std::make_shared<sad::Frame>(scan),
+                                         sad::OccupancyMap::GridMethod::MODEL_POINTS);
+                },
+                "Occupancy with model points", 1);
+        }
+        else
+        {
+            sad::evaluate_and_call(
+                [&]() {
+                    oc_map.AddLidarFrame(std::make_shared<sad::Frame>(scan), sad::OccupancyMap::GridMethod::BRESENHAM);
+                },
+                "Occupancy with bresenham", 1);
+        }
+
+        cv::Mat raw_scan;
+        sad::Visualize2DScan(scan, SE2(), raw_scan, Vec3b(255, 0, 0));
+        cv::imshow("scan", raw_scan);
+        cv::imshow("occupancy map", oc_map.GetOccupancyGridBlackWhite());
+        cv::waitKey(10);
+        return true;
+    };
+
+    rosbag_io.AddScan2DHandle("/pavo_scan_bottom", scan_2d_handle).Go();
 
     return 0;
 }

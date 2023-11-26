@@ -32,6 +32,7 @@ void OccupancyMap::BuildModel()
             model_.push_back(pt);
         }
     }
+    std::cout << "********************** model_ size : " << model_.size() << std::endl;
 }
 
 double OccupancyMap::FindRangeInAngle(double angle, Scan2d::Ptr scan)
