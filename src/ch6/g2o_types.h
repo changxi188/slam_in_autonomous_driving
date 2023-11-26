@@ -10,6 +10,7 @@
 #include <g2o/core/base_vertex.h>
 
 #include <glog/logging.h>
+#include <pcl/search/kdtree.h>
 #include <opencv2/core.hpp>
 
 #include "common/eigen_types.h"
@@ -135,6 +136,169 @@ private:
     double                  angle_         = 0;
     float                   resolution_    = 10.0;
     inline static const int image_boarder_ = 10;
+};
+
+/**
+ * error = p_w - q_w
+ */
+class EdgeSE2IcpPoint2Point : public g2o::BaseUnaryEdge<2, double, VertexSE2>
+{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+    EdgeSE2IcpPoint2Point(pcl::PointCloud<pcl::PointXY>::Ptr       target_cloud,
+                          const pcl::search::KdTree<pcl::PointXY>& kdtree, const float angle, const float r)
+      : target_cloud_(target_cloud), kdtree_(kdtree), angle_(angle), r_(r)
+    {
+    }
+
+    void computeError() override
+    {
+        VertexSE2* v    = (VertexSE2*)_vertices[0];
+        SE2        pose = v->estimate();
+
+        Vec2d        pw = pose * Vec2d(r_ * std::cos(angle_), r_ * std::sin(angle_));
+        pcl::PointXY pt;
+        pt.x = pw.x();
+        pt.y = pw.y();
+
+        // 最近邻
+        nn_idx_.clear();
+        dis_.clear();
+        kdtree_.nearestKSearch(pt, 1, nn_idx_, dis_);
+
+        if (nn_idx_.size() > 0 && dis_[0] < max_dis2_)
+        {
+            _error << pt.x - target_cloud_->points[nn_idx_[0]].x, pt.y - target_cloud_->points[nn_idx_[0]].y;
+        }
+        else
+        {
+            _error << 0, 0;
+            setLevel(1);
+        }
+    }
+
+    void linearizeOplus() override
+    {
+        VertexSE2* v     = (VertexSE2*)_vertices[0];
+        SE2        pose  = v->estimate();
+        float      theta = pose.so2().log();
+
+        if (nn_idx_.size() > 0 && dis_[0] < max_dis2_)
+        {
+            _jacobianOplusXi << 1, 0, 0, 1, -r_ * std::sin(angle_ + theta), r_ * std::cos(angle_ + theta);
+        }
+        else
+        {
+            _jacobianOplusXi.setZero();
+            setLevel(1);
+        }
+    }
+
+    bool read(std::istream& is) override
+    {
+        return true;
+    }
+    bool write(std::ostream& os) const override
+    {
+        return true;
+    }
+
+private:
+    std::vector<int>   nn_idx_;
+    std::vector<float> dis_;
+
+    const pcl::search::KdTree<pcl::PointXY>& kdtree_;
+    pcl::PointCloud<pcl::PointXY>::Ptr       target_cloud_;
+    const float                              angle_;
+    const float                              r_;
+    const float                              max_dis2_ = 0.01;  // 最近邻时的最远距离（平方）
+};
+
+class EdgeSE2IcpPoint2Line : public g2o::BaseUnaryEdge<1, double, VertexSE2>
+{
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+    EdgeSE2IcpPoint2Line(pcl::PointCloud<pcl::PointXY>::Ptr       target_cloud,
+                         const pcl::search::KdTree<pcl::PointXY>& kdtree, const float angle, const float r)
+      : target_cloud_(target_cloud), kdtree_(kdtree), angle_(angle), r_(r)
+    {
+    }
+
+    void computeError() override
+    {
+        VertexSE2* v    = (VertexSE2*)_vertices[0];
+        SE2        pose = v->estimate();
+
+        Vec2d        pw = pose * Vec2d(r_ * std::cos(angle_), r_ * std::sin(angle_));
+        pcl::PointXY pt;
+        pt.x = pw.x();
+        pt.y = pw.y();
+
+        // 最近邻
+        std::vector<int>   nn_idx;
+        std::vector<float> dis;
+        kdtree_.nearestKSearch(pt, 5, nn_idx, dis);
+
+        effective_pts_.clear();  // 有效点
+        for (int j = 0; j < nn_idx.size(); ++j)
+        {
+            if (dis[j] < max_dis_)
+            {
+                effective_pts_.emplace_back(
+                    Vec2d(target_cloud_->points[nn_idx[j]].x, target_cloud_->points[nn_idx[j]].y));
+            }
+        }
+
+        fitted_ = math::FitLine2D(effective_pts_, line_coeffs_);
+        if (effective_pts_.size() >= 3 && fitted_)
+        {
+            _error << line_coeffs_[0] * pw[0] + line_coeffs_[1] * pw[1] + line_coeffs_[2];
+        }
+        else
+        {
+            _error[0] = 0;
+            setLevel(1);
+        }
+    }
+
+    void linearizeOplus() override
+    {
+        VertexSE2* v     = (VertexSE2*)_vertices[0];
+        SE2        pose  = v->estimate();
+        float      theta = pose.so2().log();
+
+        if (effective_pts_.size() >= 3 && fitted_)
+        {
+            _jacobianOplusXi << line_coeffs_[0], line_coeffs_[1],
+                -line_coeffs_[0] * r_ * std::sin(angle_ + theta) + line_coeffs_[1] * r_ * std::cos(angle_ + theta);
+        }
+        else
+        {
+            _jacobianOplusXi.setZero();
+            setLevel(1);
+        }
+    }
+
+    bool read(std::istream& is) override
+    {
+        return true;
+    }
+
+    bool write(std::ostream& os) const override
+    {
+        return true;
+    }
+
+private:
+    std::vector<Vec2d> effective_pts_;
+    Vec3d              line_coeffs_ = Vec3d::Zero();
+    bool               fitted_      = false;
+
+    const pcl::search::KdTree<pcl::PointXY>& kdtree_;
+    pcl::PointCloud<pcl::PointXY>::Ptr       target_cloud_;
+    const float                              angle_;
+    const float                              r_;
+    const float                              max_dis_ = 0.3;  // 最近邻时的最远距离
 };
 
 /**

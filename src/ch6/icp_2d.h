@@ -44,6 +44,12 @@ public:
     /// 使用高斯牛顿法进行配准, Point-to-Line
     bool AlignGaussNewtonPoint2Line(SE2& init_pose);
 
+    /// 使用g2o进行点到点icp, Point-to-Point
+    bool AlignG2OPoint2Point(SE2& init_pose);
+
+    /// 使用g2o进行点到线icp, Point-to-Line
+    bool AlignG2OPoint2Line(SE2& init_pose);
+
 private:
     // 建立目标点云的Kdtree
     void BuildTargetKdTree();

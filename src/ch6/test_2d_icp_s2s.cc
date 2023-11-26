@@ -47,6 +47,14 @@ int main(int argc, char** argv)
         {
             icp.AlignGaussNewtonPoint2Line(pose);
         }
+        else if (FLAGS_method == "point2point_g2o")
+        {
+            icp.AlignG2OPoint2Point(pose);
+        }
+        else if (FLAGS_method == "point2line_g2o")
+        {
+            icp.AlignG2OPoint2Line(pose);
+        }
 
         cv::Mat image;
         sad::Visualize2DScan(last_scan, SE2(), image, Vec3b(255, 0, 0));    // target是蓝的
