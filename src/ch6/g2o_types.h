@@ -249,10 +249,10 @@ public:
             }
         }
 
-        fitted_ = math::FitLine2D(effective_pts_, line_coeffs_);
-        if (effective_pts_.size() >= 3 && fitted_)
+        Vec3d line_coeffs;
+        if (effective_pts_.size() >= 3 && math::FitLine2D(effective_pts_, line_coeffs))
         {
-            _error << line_coeffs_[0] * pw[0] + line_coeffs_[1] * pw[1] + line_coeffs_[2];
+            _error << line_coeffs[0] * pw[0] + line_coeffs[1] * pw[1] + line_coeffs[2];
         }
         else
         {
@@ -267,10 +267,11 @@ public:
         SE2        pose  = v->estimate();
         float      theta = pose.so2().log();
 
-        if (effective_pts_.size() >= 3 && fitted_)
+        Vec3d line_coeffs;
+        if (effective_pts_.size() >= 3 && math::FitLine2D(effective_pts_, line_coeffs))
         {
-            _jacobianOplusXi << line_coeffs_[0], line_coeffs_[1],
-                -line_coeffs_[0] * r_ * std::sin(angle_ + theta) + line_coeffs_[1] * r_ * std::cos(angle_ + theta);
+            _jacobianOplusXi << line_coeffs[0], line_coeffs[1],
+                -line_coeffs[0] * r_ * std::sin(angle_ + theta) + line_coeffs[1] * r_ * std::cos(angle_ + theta);
         }
         else
         {
@@ -291,8 +292,6 @@ public:
 
 private:
     std::vector<Vec2d> effective_pts_;
-    Vec3d              line_coeffs_ = Vec3d::Zero();
-    bool               fitted_      = false;
 
     const pcl::search::KdTree<pcl::PointXY>& kdtree_;
     pcl::PointCloud<pcl::PointXY>::Ptr       target_cloud_;
