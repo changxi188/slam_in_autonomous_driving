@@ -56,6 +56,7 @@ find_package(catkin REQUIRED COMPONENTS
         sensor_msgs
         pcl_ros
         pcl_conversions
+        laser_geometry
         )
 include_directories(${catkin_INCLUDE_DIRS})
 

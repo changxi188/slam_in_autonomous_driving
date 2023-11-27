@@ -8,7 +8,7 @@
 #include "ch6/lidar_2d_utils.h"
 #include "common/io_utils.h"
 
-DEFINE_string(bag_path, "./dataset/sad/2dmapping/floor1.bag", "数据包路径");
+DEFINE_string(bag_path, "./dataset/sad/2dmapping/floor4.bag", "数据包路径");
 
 /// 测试从rosbag中读取2d scan并plot的结果
 int main(int argc, char** argv)
@@ -19,16 +19,14 @@ int main(int argc, char** argv)
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     sad::RosbagIO rosbag_io(fLS::FLAGS_bag_path);
-    rosbag_io
-        .AddScan2DHandle("/pavo_scan_bottom",
-                         [](Scan2d::Ptr scan) {
-                             cv::Mat image;
-                             sad::Visualize2DScan(scan, SE2(), image, Vec3b(255, 0, 0));
-                             cv::imshow("scan", image);
-                             cv::waitKey(20);
-                             return true;
-                         })
-        .Go();
+    auto          scan_2d_handle = [](Scan2d::Ptr scan) {
+        cv::Mat image;
+        sad::Visualize2DScan(scan, SE2(), image, Vec3b(255, 0, 0));
+        cv::imshow("scan", image);
+        cv::waitKey(20);
+        return true;
+    };
+    rosbag_io.AddScan2DHandle("pavo_scan_bottom", scan_2d_handle).Go();
 
     return 0;
 }

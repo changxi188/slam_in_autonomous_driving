@@ -28,6 +28,19 @@ target_link_libraries(test_2dlidar_io
         ${third_party_libs}
         )
 
+add_executable(test_2d_degradation_detection
+        test_2d_degradation_detection.cc
+        )
+
+target_link_libraries(test_2d_degradation_detection
+        ${PROJECT_NAME}.ch6
+        ${OpenCV_LIBS}
+        ${catkin_LIBRARIES}
+        glog gflags
+        ${PCL_LIBRARIES}
+        ${third_party_libs}
+        )
+
 add_executable(test_2d_icp_s2s
         test_2d_icp_s2s.cc
         )
