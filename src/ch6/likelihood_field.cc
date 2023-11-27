@@ -5,6 +5,7 @@
 #include <opencv2/highgui.hpp>
 #include "ch6/g2o_types.h"
 #include "ch6/likelihood_filed.h"
+#include "common/math_utils.h"
 
 #include <glog/logging.h>
 
@@ -104,16 +105,18 @@ bool LikelihoodField::AlignGaussNewton(SE2& init_pose)
             Vec2d pw    = current_pose * Vec2d(r * std::cos(angle), r * std::sin(angle));
 
             // 在field中的图像坐标
-            Vec2i pf = (pw * resolution_ + Vec2d(500, 500)).cast<int>();
+            Vec2d pf = pw * resolution_ + Vec2d(500, 500);
 
             if (pf[0] >= image_boarder && pf[0] < field_.cols - image_boarder && pf[1] >= image_boarder &&
                 pf[1] < field_.rows - image_boarder)
             {
                 effective_num++;
 
-                // 图像梯度
-                float dx = 0.5 * (field_.at<float>(pf[1], pf[0] + 1) - field_.at<float>(pf[1], pf[0] - 1));
-                float dy = 0.5 * (field_.at<float>(pf[1] + 1, pf[0]) - field_.at<float>(pf[1] - 1, pf[0]));
+                // 先取出双线性插值的结果, 然后计算图像梯度
+                float dx = 0.5 * (math::GetPixelValue<float>(field_, pf[0] + 1, pf[1]) -
+                                  math::GetPixelValue<float>(field_, pf[0] - 1, pf[1]));
+                float dy = 0.5 * (math::GetPixelValue<float>(field_, pf[0], pf[1] + 1) -
+                                  math::GetPixelValue<float>(field_, pf[0], pf[1] - 1));
 
                 Vec3d J;
                 J << resolution_ * dx, resolution_ * dy,
