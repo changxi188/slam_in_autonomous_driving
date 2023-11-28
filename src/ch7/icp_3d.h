@@ -24,7 +24,7 @@ public:
     struct Options
     {
         int    max_iteration_           = 20;     // 最大迭代次数
-        double max_nn_distance_         = 1.0;    // 点到点最近邻查找时阈值
+        double max_nn_distance_         = 10.0;   // 点到点最近邻查找时阈值
         double max_plane_distance_      = 0.05;   // 平面最近邻查找时阈值
         double max_line_distance_       = 0.5;    // 点线最近邻查找时阈值
         int    min_effective_pts_       = 10;     // 最近邻点数阈值
