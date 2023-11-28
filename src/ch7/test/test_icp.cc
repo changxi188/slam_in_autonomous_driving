@@ -19,18 +19,19 @@ DEFINE_string(source, "./data/ch7/EPFL/kneeling_lady_source.pcd", "第1个点云
 DEFINE_string(target, "./data/ch7/EPFL/kneeling_lady_target.pcd", "第2个点云路径");
 DEFINE_string(ground_truth_file, "./data/ch7/EPFL/kneeling_lady_pose.txt", "真值Pose");
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     google::InitGoogleLogging(argv[0]);
-    FLAGS_stderrthreshold = google::INFO;
+    FLAGS_stderrthreshold  = google::INFO;
     FLAGS_colorlogtostderr = true;
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     // EPFL 雕像数据集：./ch7/EPFL/aquarius_{sourcd.pcd, target.pcd}，真值在对应目录的_pose.txt中
     // EPFL 模型比较精细，配准时应该采用较小的栅格
-
     std::ifstream fin(FLAGS_ground_truth_file);
-    SE3 gt_pose;
-    if (fin) {
+    SE3           gt_pose;
+    if (fin)
+    {
         double tx, ty, tz, qw, qx, qy, qz;
         fin >> tx >> ty >> tz >> qw >> qx >> qy >> qz;
         fin.close();
@@ -51,13 +52,16 @@ int main(int argc, char** argv) {
             icp.SetGroundTruth(gt_pose);
             SE3 pose;
             success = icp.AlignP2P(pose);
-            if (success) {
+            if (success)
+            {
                 LOG(INFO) << "icp p2p align success, pose: " << pose.so3().unit_quaternion().coeffs().transpose()
                           << ", " << pose.translation().transpose();
                 sad::CloudPtr source_trans(new sad::PointCloudType);
                 pcl::transformPointCloud(*source, *source_trans, pose.matrix().cast<float>());
                 sad::SaveCloudToFile("./data/ch7/icp_trans.pcd", *source_trans);
-            } else {
+            }
+            else
+            {
                 LOG(ERROR) << "align failed.";
             }
         },
@@ -72,13 +76,16 @@ int main(int argc, char** argv) {
             icp.SetGroundTruth(gt_pose);
             SE3 pose;
             success = icp.AlignP2Plane(pose);
-            if (success) {
+            if (success)
+            {
                 LOG(INFO) << "icp p2plane align success, pose: " << pose.so3().unit_quaternion().coeffs().transpose()
                           << ", " << pose.translation().transpose();
                 sad::CloudPtr source_trans(new sad::PointCloudType);
                 pcl::transformPointCloud(*source, *source_trans, pose.matrix().cast<float>());
                 sad::SaveCloudToFile("./data/ch7/icp_plane_trans.pcd", *source_trans);
-            } else {
+            }
+            else
+            {
                 LOG(ERROR) << "align failed.";
             }
         },
@@ -93,13 +100,16 @@ int main(int argc, char** argv) {
             icp.SetGroundTruth(gt_pose);
             SE3 pose;
             success = icp.AlignP2Line(pose);
-            if (success) {
+            if (success)
+            {
                 LOG(INFO) << "icp p2line align success, pose: " << pose.so3().unit_quaternion().coeffs().transpose()
                           << ", " << pose.translation().transpose();
                 sad::CloudPtr source_trans(new sad::PointCloudType);
                 pcl::transformPointCloud(*source, *source_trans, pose.matrix().cast<float>());
                 sad::SaveCloudToFile("./data/ch7/icp_line_trans.pcd", *source_trans);
-            } else {
+            }
+            else
+            {
                 LOG(ERROR) << "align failed.";
             }
         },
@@ -109,22 +119,25 @@ int main(int argc, char** argv) {
     sad::evaluate_and_call(
         [&]() {
             sad::Ndt3d::Options options;
-            options.voxel_size_ = 0.5;
+            options.voxel_size_      = 0.5;
             options.remove_centroid_ = true;
-            options.nearby_type_ = sad::Ndt3d::NearbyType::CENTER;
+            options.nearby_type_     = sad::Ndt3d::NearbyType::CENTER;
             sad::Ndt3d ndt(options);
             ndt.SetSource(source);
             ndt.SetTarget(target);
             ndt.SetGtPose(gt_pose);
             SE3 pose;
             success = ndt.AlignNdt(pose);
-            if (success) {
+            if (success)
+            {
                 LOG(INFO) << "ndt align success, pose: " << pose.so3().unit_quaternion().coeffs().transpose() << ", "
                           << pose.translation().transpose();
                 sad::CloudPtr source_trans(new sad::PointCloudType);
                 pcl::transformPointCloud(*source, *source_trans, pose.matrix().cast<float>());
                 sad::SaveCloudToFile("./data/ch7/ndt_trans.pcd", *source_trans);
-            } else {
+            }
+            else
+            {
                 LOG(ERROR) << "align failed.";
             }
         },

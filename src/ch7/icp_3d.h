@@ -7,8 +7,8 @@
 
 #include "ch5/kdtree.h"
 
-namespace sad {
-
+namespace sad
+{
 /**
  * 3D 形式的ICP
  * 先SetTarget, 再SetSource, 然后调用Align方法获取位姿
@@ -18,23 +18,30 @@ namespace sad {
  *
  * 使用第5章的Kd树来求取最近邻
  */
-class Icp3d {
-   public:
-    struct Options {
-        int max_iteration_ = 20;                // 最大迭代次数
-        double max_nn_distance_ = 1.0;          // 点到点最近邻查找时阈值
-        double max_plane_distance_ = 0.05;      // 平面最近邻查找时阈值
-        double max_line_distance_ = 0.5;        // 点线最近邻查找时阈值
-        int min_effective_pts_ = 10;            // 最近邻点数阈值
-        double eps_ = 1e-2;                     // 收敛判定条件
-        bool use_initial_translation_ = false;  // 是否使用初始位姿中的平移估计
+class Icp3d
+{
+public:
+    struct Options
+    {
+        int    max_iteration_           = 20;     // 最大迭代次数
+        double max_nn_distance_         = 1.0;    // 点到点最近邻查找时阈值
+        double max_plane_distance_      = 0.05;   // 平面最近邻查找时阈值
+        double max_line_distance_       = 0.5;    // 点线最近邻查找时阈值
+        int    min_effective_pts_       = 10;     // 最近邻点数阈值
+        double eps_                     = 1e-2;   // 收敛判定条件
+        bool   use_initial_translation_ = false;  // 是否使用初始位姿中的平移估计
     };
 
-    Icp3d() {}
-    Icp3d(Options options) : options_(options) {}
+    Icp3d()
+    {
+    }
+    Icp3d(Options options) : options_(options)
+    {
+    }
 
     /// 设置目标的Scan
-    void SetTarget(CloudPtr target) {
+    void SetTarget(CloudPtr target)
+    {
         target_ = target;
         BuildTargetKdTree();
 
@@ -46,17 +53,19 @@ class Icp3d {
     }
 
     /// 设置被配准的Scan
-    void SetSource(CloudPtr source) {
-        source_ = source;
+    void SetSource(CloudPtr source)
+    {
+        source_        = source;
         source_center_ = std::accumulate(source_->points.begin(), source_->points.end(), Vec3d::Zero().eval(),
                                          [](const Vec3d& c, const PointType& pt) -> Vec3d { return c + ToVec3d(pt); }) /
                          source_->size();
         LOG(INFO) << "source center: " << source_center_.transpose();
     }
 
-    void SetGroundTruth(const SE3& gt_pose) {
+    void SetGroundTruth(const SE3& gt_pose)
+    {
         gt_pose_ = gt_pose;
-        gt_set_ = true;
+        gt_set_  = true;
     }
 
     /// 使用gauss-newton方法进行配准, 点到点
@@ -68,7 +77,7 @@ class Icp3d {
     /// 基于gauss-newton的点面ICP
     bool AlignP2Plane(SE3& init_pose);
 
-   private:
+private:
     // 建立目标点云的Kdtree
     void BuildTargetKdTree();
 
@@ -81,7 +90,7 @@ class Icp3d {
     Vec3d source_center_ = Vec3d::Zero();
 
     bool gt_set_ = false;  // 真值是否设置
-    SE3 gt_pose_;
+    SE3  gt_pose_;
 
     Options options_;
 };
