@@ -23,7 +23,7 @@ class Icp3d
 public:
     struct Options
     {
-        int    max_iteration_           = 20;     // 最大迭代次数
+        int    max_iteration_           = 5;      // 最大迭代次数
         double max_nn_distance_         = 1.0;    // 点到点最近邻查找时阈值
         double max_plane_distance_      = 0.05;   // 平面最近邻查找时阈值
         double max_line_distance_       = 0.5;    // 点线最近邻查找时阈值
