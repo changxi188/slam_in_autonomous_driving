@@ -8,13 +8,15 @@
 #include <fstream>
 #include <numeric>
 
-namespace sad::common {
-
+namespace sad::common
+{
 std::map<std::string, Timer::TimerRecord> Timer::records_;
 
-void Timer::PrintAll() {
+void Timer::PrintAll()
+{
     LOG(INFO) << ">>> ===== Printing run time =====";
-    for (const auto& r : records_) {
+    for (const auto& r : records_)
+    {
         LOG(INFO) << "> [ " << r.first << " ] average time usage: "
                   << std::accumulate(r.second.time_usage_in_ms_.begin(), r.second.time_usage_in_ms_.end(), 0.0) /
                          double(r.second.time_usage_in_ms_.size())
@@ -23,29 +25,40 @@ void Timer::PrintAll() {
     LOG(INFO) << ">>> ===== Printing run time end =====";
 }
 
-void Timer::DumpIntoFile(const std::string& file_name) {
+void Timer::DumpIntoFile(const std::string& file_name)
+{
     std::ofstream ofs(file_name, std::ios::out);
-    if (!ofs.is_open()) {
+    if (!ofs.is_open())
+    {
         LOG(ERROR) << "Failed to open file: " << file_name;
         return;
-    } else {
+    }
+    else
+    {
         LOG(INFO) << "Dump Time Records into file: " << file_name;
     }
 
     size_t max_length = 0;
-    for (const auto& iter : records_) {
+    for (const auto& iter : records_)
+    {
         ofs << iter.first << ", ";
-        if (iter.second.time_usage_in_ms_.size() > max_length) {
+        if (iter.second.time_usage_in_ms_.size() > max_length)
+        {
             max_length = iter.second.time_usage_in_ms_.size();
         }
     }
     ofs << std::endl;
 
-    for (size_t i = 0; i < max_length; ++i) {
-        for (const auto& iter : records_) {
-            if (i < iter.second.time_usage_in_ms_.size()) {
+    for (size_t i = 0; i < max_length; ++i)
+    {
+        for (const auto& iter : records_)
+        {
+            if (i < iter.second.time_usage_in_ms_.size())
+            {
                 ofs << iter.second.time_usage_in_ms_[i] << ",";
-            } else {
+            }
+            else
+            {
                 ofs << ",";
             }
         }
@@ -54,8 +67,10 @@ void Timer::DumpIntoFile(const std::string& file_name) {
     ofs.close();
 }
 
-double Timer::GetMeanTime(const std::string& func_name) {
-    if (records_.find(func_name) == records_.end()) {
+double Timer::GetMeanTime(const std::string& func_name)
+{
+    if (records_.find(func_name) == records_.end())
+    {
         return 0.0;
     }
 
@@ -64,4 +79,4 @@ double Timer::GetMeanTime(const std::string& func_name) {
            double(r.time_usage_in_ms_.size());
 }
 
-}  // namespace sad::utils
+}  // namespace sad::common

@@ -14,9 +14,10 @@ DEFINE_string(dataset_type, "ULHK", "NCLT/ULHK/KITTI/WXB3D");  // 数据集类�
 DEFINE_bool(use_ndt_nearby_6, false, "use ndt nearby 6?");
 DEFINE_bool(display_map, true, "display map?");
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     google::InitGoogleLogging(argv[0]);
-    FLAGS_stderrthreshold = google::INFO;
+    FLAGS_stderrthreshold  = google::INFO;
     FLAGS_colorlogtostderr = true;
     google::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -40,9 +41,10 @@ int main(int argc, char** argv) {
         })
         .Go();
 
-    if (FLAGS_display_map) {
+    if (FLAGS_display_map)
+    {
         // 把地图存下来
-        ndt_lo.SaveMap("./data/ch7/map.pcd");
+        ndt_lo.SaveMap("./data/ch7/inc_ndt_map.pcd");
     }
 
     sad::common::Timer::PrintAll();

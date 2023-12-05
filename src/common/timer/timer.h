@@ -11,19 +11,22 @@
 #include <string>
 #include <vector>
 
-namespace sad::common {
-
+namespace sad::common
+{
 /// 统计时间工具
 /// NOTE Timer套在gtest当中貌似有问题
-class Timer {
-   public:
-    struct TimerRecord {
+class Timer
+{
+public:
+    struct TimerRecord
+    {
         TimerRecord() = default;
-        TimerRecord(const std::string& name, double time_usage) {
+        TimerRecord(const std::string& name, double time_usage)
+        {
             func_name_ = name;
             time_usage_in_ms_.emplace_back(time_usage);
         }
-        std::string func_name_;
+        std::string         func_name_;
         std::vector<double> time_usage_in_ms_;
     };
 
@@ -34,15 +37,19 @@ class Timer {
      * @param func_name
      */
     template <class F>
-    static void Evaluate(F&& func, const std::string& func_name) {
+    static void Evaluate(F&& func, const std::string& func_name)
+    {
         auto t1 = std::chrono::steady_clock::now();
         std::forward<F>(func)();
-        auto t2 = std::chrono::steady_clock::now();
+        auto t2        = std::chrono::steady_clock::now();
         auto time_used = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() * 1000;
 
-        if (records_.find(func_name) != records_.end()) {
+        if (records_.find(func_name) != records_.end())
+        {
             records_[func_name].time_usage_in_ms_.emplace_back(time_used);
-        } else {
+        }
+        else
+        {
             records_.insert({func_name, TimerRecord(func_name, time_used)});
         }
     }
@@ -57,12 +64,15 @@ class Timer {
     static double GetMeanTime(const std::string& func_name);
 
     /// 清理记录
-    static void Clear() { records_.clear(); }
+    static void Clear()
+    {
+        records_.clear();
+    }
 
-   private:
+private:
     static std::map<std::string, TimerRecord> records_;
 };
 
-}  // namespace sad::utils
+}  // namespace sad::common
 
 #endif  // FUSION_TIMER_H
