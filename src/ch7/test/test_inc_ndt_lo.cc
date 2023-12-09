@@ -26,7 +26,8 @@ int main(int argc, char** argv)
     sad::IncrementalNDTLO::Options options;
     options.ndt3d_options_.nearby_type_ =
         FLAGS_use_ndt_nearby_6 ? sad::IncNdt3d::NearbyType::NEARBY6 : sad::IncNdt3d::NearbyType::CENTER;
-    options.display_realtime_cloud_ = FLAGS_display_map;
+    options.ndt3d_options_.use_cauchy_loss_ = true;
+    options.display_realtime_cloud_         = FLAGS_display_map;
     sad::IncrementalNDTLO ndt_lo(options);
 
     rosbag_io

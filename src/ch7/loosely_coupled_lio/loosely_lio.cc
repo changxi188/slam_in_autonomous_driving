@@ -25,8 +25,9 @@ bool LooselyLIO::Init(const std::string& config_yaml)
 
     /// 初始化NDT LO的参数
     sad::IncrementalNDTLO::Options indt_options;
-    indt_options.display_realtime_cloud_ = false;  // 这个程序自己有UI，不用PCL中的
-    inc_ndt_lo_                          = std::make_shared<sad::IncrementalNDTLO>(indt_options);
+    indt_options.display_realtime_cloud_         = false;  // 这个程序自己有UI，不用PCL中的
+    indt_options.ndt3d_options_.use_cauchy_loss_ = true;
+    inc_ndt_lo_                                  = std::make_shared<sad::IncrementalNDTLO>(indt_options);
 
     /// 初始化UI
     if (options_.with_ui_)
@@ -128,9 +129,9 @@ void LooselyLIO::Undistort()
         NavStated match;
 
         // 根据pt.time查找时间，pt.time是该点打到的时间与雷达开始时间之差，单位为毫秒
-        math::PoseInterp<NavStated>(measures_.lidar_begin_time_ + pt.time * 1e-3, imu_states_,
-                                    [](const NavStated& s) { return s.timestamp_; },
-                                    [](const NavStated& s) { return s.GetSE3(); }, Ti, match);
+        math::PoseInterp<NavStated>(
+            measures_.lidar_begin_time_ + pt.time * 1e-3, imu_states_, [](const NavStated& s) { return s.timestamp_; },
+            [](const NavStated& s) { return s.GetSE3(); }, Ti, match);
 
         Vec3d pi           = ToVec3d(pt);
         Vec3d p_compensate = TIL_.inverse() * T_end.inverse() * Ti * TIL_ * pi;

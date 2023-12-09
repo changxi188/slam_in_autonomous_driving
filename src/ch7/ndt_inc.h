@@ -5,6 +5,7 @@
 #ifndef SLAM_IN_AUTO_DRIVING_NDT_INC_H
 #define SLAM_IN_AUTO_DRIVING_NDT_INC_H
 
+#include "cauchy_loss.h"
 #include "common/eigen_types.h"
 #include "common/g2o_types.h"
 #include "common/point_types.h"
@@ -36,6 +37,7 @@ public:
         double eps_               = 1e-3;    // 收敛判定条件
         double res_outlier_th_    = 5.0;     // 异常值拒绝阈值
         size_t capacity_          = 100000;  // 缓存的体素数量
+        bool   use_cauchy_loss_   = false;
 
         NearbyType nearby_type_ = NearbyType::NEARBY6;
     };
@@ -82,6 +84,11 @@ public:
     {
         options_.inv_voxel_size_ = 1.0 / options_.voxel_size_;
         GenerateNearbyGrids();
+
+        if (options_.use_cauchy_loss_)
+        {
+            cauchy_loss_ = std::make_unique<CauchyLoss>(1.0);
+        }
     }
 
     /// 获取一些统计信息
@@ -133,6 +140,8 @@ private:
     std::vector<KeyType>                                                      nearby_grids_;  // 附近的栅格
 
     bool flag_first_scan_ = true;  // 首帧点云特殊处理
+
+    std::unique_ptr<CauchyLoss> cauchy_loss_;
 };
 
 }  // namespace sad
