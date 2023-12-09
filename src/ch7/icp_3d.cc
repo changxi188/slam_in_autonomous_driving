@@ -31,6 +31,9 @@ bool Icp3d::AlignP2P(SE3& init_pose)
     std::vector<bool>                        effect_pts(index.size(), false);
     std::vector<Eigen::Matrix<double, 3, 6>> jacobians(index.size());
     std::vector<Vec3d>                       errors(index.size());
+    std::vector<Eigen::MatrixXd>             robust_infos(index.size());
+    std::vector<Eigen::Matrix<double, 3, 3>> informations(index.size());
+    std::vector<double>                      drhos(index.size());
 
     for (int iter = 0; iter < options_.max_iteration_; ++iter)
     {
@@ -63,6 +66,15 @@ bool Icp3d::AlignP2P(SE3& init_pose)
 
                 jacobians[idx] = J;
                 errors[idx]    = e;
+
+                if (cauchy_loss_)
+                {
+                    // 计算鲁棒核的信息矩阵
+                    Eigen::Matrix<double, 3, 3> information;
+                    information.setIdentity();
+                    informations[idx] = information;
+                    cauchy_loss_->RobustInfo(e, information, drhos[idx], robust_infos[idx]);
+                }
             }
             else
             {
@@ -76,8 +88,8 @@ bool Icp3d::AlignP2P(SE3& init_pose)
         int    effective_num = 0;
         auto   H_and_err     = std::accumulate(
             index.begin(), index.end(), std::pair<Mat6d, Vec6d>(Mat6d::Zero(), Vec6d::Zero()),
-            [&jacobians, &errors, &effect_pts, &total_res, &effective_num](const std::pair<Mat6d, Vec6d>& pre,
-                                                                           int idx) -> std::pair<Mat6d, Vec6d> {
+            [&jacobians, &errors, &informations, &drhos, &robust_infos, &effect_pts, &total_res, &effective_num,
+             this](const std::pair<Mat6d, Vec6d>& pre, int idx) -> std::pair<Mat6d, Vec6d> {
                 if (!effect_pts[idx])
                 {
                     return pre;
@@ -86,6 +98,14 @@ bool Icp3d::AlignP2P(SE3& init_pose)
                 {
                     total_res += errors[idx].dot(errors[idx]);
                     effective_num++;
+
+                    if (cauchy_loss_)
+                    {
+                        return std::pair<Mat6d, Vec6d>(
+                            pre.first + jacobians[idx].transpose() * robust_infos[idx] * jacobians[idx],
+                            pre.second - drhos[idx] * jacobians[idx].transpose() * informations[idx] * errors[idx]);
+                    }
+
                     return std::pair<Mat6d, Vec6d>(pre.first + jacobians[idx].transpose() * jacobians[idx],
                                                    pre.second - jacobians[idx].transpose() * errors[idx]);
                 }
@@ -146,6 +166,9 @@ bool Icp3d::AlignP2Plane(SE3& init_pose)
     std::vector<bool>                        effect_pts(index.size(), false);
     std::vector<Eigen::Matrix<double, 1, 6>> jacobians(index.size());
     std::vector<double>                      errors(index.size());
+    std::vector<Eigen::MatrixXd>             robust_infos(index.size());
+    std::vector<Eigen::Matrix<double, 1, 1>> informations(index.size());
+    std::vector<double>                      drhos(index.size());
 
     for (int iter = 0; iter < options_.max_iteration_; ++iter)
     {
@@ -190,6 +213,17 @@ bool Icp3d::AlignP2Plane(SE3& init_pose)
 
                 jacobians[idx] = J;
                 errors[idx]    = dis;
+
+                if (cauchy_loss_)
+                {
+                    // 计算鲁棒核的信息矩阵
+                    Eigen::Matrix<double, 1, 1> information;
+                    information.setIdentity();
+                    informations[idx] = information;
+                    Eigen::VectorXd e(1);
+                    e[0] = dis;
+                    cauchy_loss_->RobustInfo(e, information, drhos[idx], robust_infos[idx]);
+                }
             }
             else
             {
@@ -203,8 +237,8 @@ bool Icp3d::AlignP2Plane(SE3& init_pose)
         int    effective_num = 0;
         auto   H_and_err     = std::accumulate(
             index.begin(), index.end(), std::pair<Mat6d, Vec6d>(Mat6d::Zero(), Vec6d::Zero()),
-            [&jacobians, &errors, &effect_pts, &total_res, &effective_num](const std::pair<Mat6d, Vec6d>& pre,
-                                                                           int idx) -> std::pair<Mat6d, Vec6d> {
+            [&jacobians, &errors, &effect_pts, &total_res, &effective_num, &informations, &drhos, &robust_infos,
+             this](const std::pair<Mat6d, Vec6d>& pre, int idx) -> std::pair<Mat6d, Vec6d> {
                 if (!effect_pts[idx])
                 {
                     return pre;
@@ -213,6 +247,12 @@ bool Icp3d::AlignP2Plane(SE3& init_pose)
                 {
                     total_res += errors[idx] * errors[idx];
                     effective_num++;
+                    if (cauchy_loss_)
+                    {
+                        return std::pair<Mat6d, Vec6d>(
+                            pre.first + jacobians[idx].transpose() * robust_infos[idx] * jacobians[idx],
+                            pre.second - drhos[idx] * jacobians[idx].transpose() * informations[idx] * errors[idx]);
+                    }
                     return std::pair<Mat6d, Vec6d>(pre.first + jacobians[idx].transpose() * jacobians[idx],
                                                    pre.second - jacobians[idx].transpose() * errors[idx]);
                 }
@@ -281,6 +321,9 @@ bool Icp3d::AlignP2Line(SE3& init_pose)
     std::vector<bool>                        effect_pts(index.size(), false);
     std::vector<Eigen::Matrix<double, 3, 6>> jacobians(index.size());
     std::vector<Vec3d>                       errors(index.size());
+    std::vector<Eigen::MatrixXd>             robust_infos(index.size());
+    std::vector<Eigen::Matrix<double, 3, 3>> informations(index.size());
+    std::vector<double>                      drhos(index.size());
 
     for (int iter = 0; iter < options_.max_iteration_; ++iter)
     {
@@ -326,6 +369,15 @@ bool Icp3d::AlignP2Line(SE3& init_pose)
 
                 jacobians[idx] = J;
                 errors[idx]    = err;
+
+                if (cauchy_loss_)
+                {
+                    // 计算鲁棒核的信息矩阵
+                    Eigen::Matrix<double, 3, 3> information;
+                    information.setIdentity();
+                    informations[idx] = information;
+                    cauchy_loss_->RobustInfo(err, information, drhos[idx], robust_infos[idx]);
+                }
             }
             else
             {
@@ -339,8 +391,8 @@ bool Icp3d::AlignP2Line(SE3& init_pose)
         int    effective_num = 0;
         auto   H_and_err     = std::accumulate(
             index.begin(), index.end(), std::pair<Mat6d, Vec6d>(Mat6d::Zero(), Vec6d::Zero()),
-            [&jacobians, &errors, &effect_pts, &total_res, &effective_num](const std::pair<Mat6d, Vec6d>& pre,
-                                                                           int idx) -> std::pair<Mat6d, Vec6d> {
+            [&jacobians, &errors, &effect_pts, &total_res, &effective_num, &informations, &drhos, &robust_infos,
+             this](const std::pair<Mat6d, Vec6d>& pre, int idx) -> std::pair<Mat6d, Vec6d> {
                 if (!effect_pts[idx])
                 {
                     return pre;
@@ -349,6 +401,14 @@ bool Icp3d::AlignP2Line(SE3& init_pose)
                 {
                     total_res += errors[idx].dot(errors[idx]);
                     effective_num++;
+
+                    if (cauchy_loss_)
+                    {
+                        return std::pair<Mat6d, Vec6d>(
+                            pre.first + jacobians[idx].transpose() * robust_infos[idx] * jacobians[idx],
+                            pre.second - drhos[idx] * jacobians[idx].transpose() * informations[idx] * errors[idx]);
+                    }
+
                     return std::pair<Mat6d, Vec6d>(pre.first + jacobians[idx].transpose() * jacobians[idx],
                                                    pre.second - jacobians[idx].transpose() * errors[idx]);
                 }

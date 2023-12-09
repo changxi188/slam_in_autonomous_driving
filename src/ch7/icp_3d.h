@@ -5,6 +5,7 @@
 #ifndef SLAM_IN_AUTO_DRIVING_ICP_3D_H
 #define SLAM_IN_AUTO_DRIVING_ICP_3D_H
 
+#include "cauchy_loss.h"
 #include "ch5/kdtree.h"
 
 namespace sad
@@ -30,13 +31,17 @@ public:
         int    min_effective_pts_       = 10;     // 最近邻点数阈值
         double eps_                     = 1e-2;   // 收敛判定条件
         bool   use_initial_translation_ = false;  // 是否使用初始位姿中的平移估计
+        bool   use_cauchy_loss_         = false;
     };
 
-    Icp3d()
-    {
-    }
+    Icp3d() = delete;
+
     Icp3d(Options options) : options_(options)
     {
+        if (options_.use_cauchy_loss_)
+        {
+            cauchy_loss_ = std::make_unique<CauchyLoss>(1.0);
+        }
     }
 
     /// 设置目标的Scan
@@ -93,6 +98,8 @@ private:
     SE3  gt_pose_;
 
     Options options_;
+
+    std::unique_ptr<CauchyLoss> cauchy_loss_;
 };
 
 }  // namespace sad

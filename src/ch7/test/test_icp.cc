@@ -44,9 +44,12 @@ int main(int argc, char** argv)
 
     bool success;
 
+    /// 点到点
     sad::evaluate_and_call(
         [&]() {
-            sad::Icp3d icp;
+            sad::Icp3d::Options options;
+            options.use_cauchy_loss_ = true;
+            sad::Icp3d icp(options);
             icp.SetSource(source);
             icp.SetTarget(target);
             icp.SetGroundTruth(gt_pose);
@@ -70,7 +73,9 @@ int main(int argc, char** argv)
     /// 点到面
     sad::evaluate_and_call(
         [&]() {
-            sad::Icp3d icp;
+            sad::Icp3d::Options options;
+            options.use_cauchy_loss_ = true;
+            sad::Icp3d icp(options);
             icp.SetSource(source);
             icp.SetTarget(target);
             icp.SetGroundTruth(gt_pose);
@@ -94,7 +99,9 @@ int main(int argc, char** argv)
     /// 点到线
     sad::evaluate_and_call(
         [&]() {
-            sad::Icp3d icp;
+            sad::Icp3d::Options options;
+            options.use_cauchy_loss_ = true;
+            sad::Icp3d icp(options);
             icp.SetSource(source);
             icp.SetTarget(target);
             icp.SetGroundTruth(gt_pose);
@@ -115,14 +122,16 @@ int main(int argc, char** argv)
         },
         "ICP P2Line", 1);
 
-    /// 第７章的NDT
+    /// 第7章的NDT
     sad::evaluate_and_call(
         [&]() {
             sad::Ndt3d::Options options;
             options.voxel_size_      = 0.5;
             options.remove_centroid_ = true;
+            options.use_cauchy_loss_ = true;
             options.nearby_type_     = sad::Ndt3d::NearbyType::CENTER;
             sad::Ndt3d ndt(options);
+
             ndt.SetSource(source);
             ndt.SetTarget(target);
             ndt.SetGtPose(gt_pose);

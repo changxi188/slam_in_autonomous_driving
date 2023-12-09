@@ -113,6 +113,9 @@ bool Ndt3d::AlignNdt(SE3& init_pose)
         std::vector<Vec3d>                       errors(total_size);
         std::vector<Mat3d>                       infos(total_size);
 
+        std::vector<Eigen::MatrixXd> robust_infos(index.size());
+        std::vector<double>          drhos(index.size());
+
         // gauss-newton 迭代
         // 最近邻，可以并发
         std::for_each(std::execution::par_unseq, index.begin(), index.end(), [&](int idx) {
@@ -149,6 +152,12 @@ bool Ndt3d::AlignNdt(SE3& init_pose)
                     errors[real_idx]     = e;
                     infos[real_idx]      = v.info_;
                     effect_pts[real_idx] = true;
+
+                    if (cauchy_loss_)
+                    {
+                        // 计算鲁棒核的信息矩阵
+                        cauchy_loss_->RobustInfo(e, v.info_, drhos[idx], robust_infos[idx]);
+                    }
                 }
                 else
                 {
@@ -176,8 +185,8 @@ bool Ndt3d::AlignNdt(SE3& init_pose)
             // chi2.emplace_back(errors[idx].transpose() * infos[idx] * errors[idx]);
             effective_num++;
 
-            H += jacobians[idx].transpose() * infos[idx] * jacobians[idx];
-            err += -jacobians[idx].transpose() * infos[idx] * errors[idx];
+            H += jacobians[idx].transpose() * robust_infos[idx] * jacobians[idx];
+            err += -drhos[idx] * jacobians[idx].transpose() * infos[idx] * errors[idx];
         }
 
         if (effective_num < options_.min_effective_pts_)

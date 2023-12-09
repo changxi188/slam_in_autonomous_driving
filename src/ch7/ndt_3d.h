@@ -5,6 +5,7 @@
 #ifndef SLAM_IN_AUTO_DRIVING_NDT_3D_H
 #define SLAM_IN_AUTO_DRIVING_NDT_3D_H
 
+#include "cauchy_loss.h"
 #include "common/eigen_types.h"
 #include "common/point_types.h"
 
@@ -32,6 +33,7 @@ public:
         double eps_               = 1e-2;   // 收敛判定条件
         double res_outlier_th_    = 20.0;   // 异常值拒绝阈值
         bool   remove_centroid_   = false;  // 是否计算两个点云中心并移除中心？
+        bool   use_cauchy_loss_   = false;
 
         NearbyType nearby_type_ = NearbyType::NEARBY6;
     };
@@ -63,6 +65,11 @@ public:
     {
         options_.inv_voxel_size_ = 1.0 / options_.voxel_size_;
         GenerateNearbyGrids();
+
+        if (options_.use_cauchy_loss_)
+        {
+            cauchy_loss_ = std::make_unique<CauchyLoss>(1.0);
+        }
     }
 
     /// 设置目标的Scan
@@ -115,6 +122,8 @@ private:
 
     std::unordered_map<KeyType, VoxelData, hash_vec<3>> grids_;         // 栅格数据
     std::vector<KeyType>                                nearby_grids_;  // 附近的栅格
+
+    std::unique_ptr<CauchyLoss> cauchy_loss_;
 };
 
 }  // namespace sad
