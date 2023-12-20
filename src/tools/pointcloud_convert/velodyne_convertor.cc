@@ -6,11 +6,13 @@
 
 #include <glog/logging.h>
 
-namespace sad::tools {
-
-VelodyneConvertor::VelodyneConvertor(const VelodyneConfig &config) : velodyne_config_(config) {
+namespace sad::tools
+{
+VelodyneConvertor::VelodyneConvertor(const VelodyneConfig& config) : velodyne_config_(config)
+{
     packets_parser_ = std::make_shared<PacketsParser>();
-    if (packets_parser_->Setup(velodyne_config_) < 0) {
+    if (packets_parser_->Setup(velodyne_config_) < 0)
+    {
         LOG(ERROR) << "velodyne point cloud initialize raw data ERROR!!!";
         return;
     }
@@ -18,7 +20,8 @@ VelodyneConvertor::VelodyneConvertor(const VelodyneConfig &config) : velodyne_co
     converted_cloud_.reset(new FullPointCloudType());
 }
 
-void VelodyneConvertor::ProcessScan(const PacketsMsgPtr &packets_msg, FullCloudPtr &out_cloud) {
+void VelodyneConvertor::ProcessScan(const PacketsMsgPtr& packets_msg, FullCloudPtr& out_cloud)
+{
     packets_parser_->PaddingPointCloud(packets_msg, out_cloud);
 }
 
