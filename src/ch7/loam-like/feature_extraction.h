@@ -5,6 +5,7 @@
 #ifndef SLAM_IN_AUTO_DRIVING_FEATURE_EXTRACTION_H
 #define SLAM_IN_AUTO_DRIVING_FEATURE_EXTRACTION_H
 
+#include <opencv2/core.hpp>
 #include "common/point_types.h"
 
 namespace sad
@@ -52,6 +53,10 @@ public:
                            CloudPtr& pc_out_surf);
 
 private:
+    const std::size_t ground_scan_ind_    = 7;
+    const int         num_scans_          = 16;
+    const float       sensor_mount_angle_ = 0.0;
+    cv::Mat           ground_mat_;
 };
 
 }  // namespace sad

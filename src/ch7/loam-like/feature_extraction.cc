@@ -3,37 +3,87 @@
 //
 #include <glog/logging.h>
 #include "ch7/loam-like/feature_extraction.h"
+#include "tools/pointcloud_convert/packets_parser.h"
 
 namespace sad
 {
 void FeatureExtraction::Extract(FullCloudPtr pc_in, CloudPtr pc_out_edge, CloudPtr pc_out_surf)
 {
-    int                   num_scans = 16;
     std::vector<CloudPtr> scans_in_each_line;  // 分线数的点云
-    for (int i = 0; i < num_scans; i++)
+    for (int i = 0; i < num_scans_; i++)
     {
         scans_in_each_line.emplace_back(new PointCloudType);
     }
 
     for (auto& pt : pc_in->points)
     {
-        assert(pt.ring >= 0 && pt.ring < num_scans);
+        assert(pt.ring >= 0 && pt.ring < num_scans_);
+
         PointType p;
-        p.x         = pt.x;
-        p.y         = pt.y;
-        p.z         = pt.z;
-        p.intensity = pt.intensity;
+        p.x = pt.x;
+        p.y = pt.y;
+        p.z = pt.z;
+
+        if (tools::PacketsParser::isPointValid(pt))
+        {
+            p.intensity = pt.intensity;
+        }
+        else
+        {
+            p.intensity = -1;
+        }
 
         scans_in_each_line[pt.ring]->points.emplace_back(p);
     }
 
-    // 处理曲率
-    for (int i = 0; i < num_scans; i++)
+    // 提取地面
+    std::size_t horizen_size = scans_in_each_line[0]->size();
+    float       diff_x, diff_y, diff_z, angle;
+    ground_mat_ = cv::Mat(num_scans_, horizen_size, CV_8S, cv::Scalar::all(0));
+    for (std::size_t j = 0; j < horizen_size; ++j)
     {
+        for (std::size_t i = 0; i < ground_scan_ind_; ++i)
+        {
+            PointType lower_point = scans_in_each_line[i]->at(j);
+            PointType upper_point = scans_in_each_line[i + 1]->at(j);
+
+            if (lower_point.intensity == -1 || upper_point.intensity == -1)
+            {
+                ground_mat_.at<int8_t>(i, j) = -1;
+                continue;
+            }
+
+            // 由上下两线之间点的XYZ位置得到两线之间的俯仰角
+            // 如果俯仰角在10度以内，则判定(i,j)为地面点,groundMat[i][j]=1
+            // 否则，则不是地面点，进行后续操作
+            diff_x = upper_point.x - lower_point.x;
+            diff_y = upper_point.y - lower_point.y;
+            diff_z = upper_point.z - lower_point.z;
+
+            angle = atan2(diff_z, sqrt(diff_x * diff_x + diff_y * diff_y)) * 180 / M_PI;
+
+            if (abs(angle - sensor_mount_angle_) <= 10)
+            {
+                ground_mat_.at<int8_t>(i, j)     = 1;
+                ground_mat_.at<int8_t>(i + 1, j) = 1;
+            }
+        }
+    }
+
+    // 处理曲率
+    for (int i = 0; i < num_scans_; i++)
+    {
+        if (scans_in_each_line[i]->size() != 1800 && scans_in_each_line[i]->size() != 1824)
+        {
+            LOG(INFO) << "size:" << scans_in_each_line[i]->size();
+        }
+        /*
         if (scans_in_each_line[i]->points.size() < 131)
         {
             continue;
         }
+        */
+        // assert(scans_in_each_line[i]->size() == 1800 || scans_in_each_line[i]->size() == 1824);
 
         std::vector<IdAndValue> cloud_curvature;  // 每条线对应的曲率
         int                     total_points = scans_in_each_line[i]->points.size() - 10;

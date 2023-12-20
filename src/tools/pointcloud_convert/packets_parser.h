@@ -73,6 +73,8 @@ public:
     int  Setup(const VelodyneConfig& conf);
     void PaddingPointCloud(const PacketsMsgPtr& scan_msg, FullCloudPtr& out_pc_msg_ptr);
 
+    static bool isPointValid(const FullPointType& point);
+
 private:
     /// 输出的点云rings_pointcloud中，每个点的curvature字段保存该点与msg_stamp的时间差
     void Unpack(const velodyne_msgs::VelodynePacket& pkt, const ros::Time& msg_stamp,
@@ -81,8 +83,6 @@ private:
     inline bool isScanValid(int rotation, float range);
 
     inline bool isScanValid(const FullPointType& point);
-
-    inline bool isPointValid(const FullPointType& point);
 
     inline void FilledNAN(FullPointType& point);
 

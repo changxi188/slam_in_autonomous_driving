@@ -214,7 +214,7 @@ void PacketsParser::ArrangePointcloud(const std::vector<FullCloudPtr>& rings_poi
         {
             for (auto& point : *rings_pointcloud[i])
             {
-                if (isPointValid(point))
+                // if (isPointValid(point))
                 {
                     out_pc_ptr->points.emplace_back(point);
                     width += 1;
@@ -245,7 +245,7 @@ inline void PacketsParser::FilledFree(FullPointType& point)
     point.intensity = 0;
 }
 
-inline bool PacketsParser::isPointValid(const FullPointType& point)
+bool PacketsParser::isPointValid(const FullPointType& point)
 {
     if (point.x == HIT_NAN || point.x == HIT_FREE || point.y == HIT_NAN || point.y == HIT_FREE || point.z == HIT_NAN ||
         point.z == HIT_FREE)
