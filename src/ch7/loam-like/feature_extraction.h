@@ -49,8 +49,8 @@ public:
      * @param pc_out_edge
      * @param pc_out_surf
      */
-    void ExtractFromSector(const CloudPtr& pc_in, std::vector<IdAndValue>& cloud_curvature, CloudPtr& pc_out_edge,
-                           CloudPtr& pc_out_surf);
+    void ExtractFromSector(const int scan_id, const CloudPtr& pc_in, std::vector<IdAndValue>& cloud_curvature,
+                           CloudPtr& pc_out_edge, CloudPtr& pc_out_surf);
 
 private:
     const std::size_t ground_scan_ind_    = 7;
