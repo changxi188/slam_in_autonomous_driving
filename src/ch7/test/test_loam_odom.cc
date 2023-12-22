@@ -31,6 +31,7 @@ int main(int argc, char** argv)
         .AddVelodyneHandle(FLAGS_topic,
                            [&](sad::FullCloudPtr cloud) -> bool {
                                sad::common::Timer::Evaluate([&]() { lo.ProcessPointCloud(cloud); }, "Loam-like odom");
+                               // std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                                return true;
                            })
         .Go();

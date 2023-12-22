@@ -7,7 +7,7 @@
 
 namespace sad
 {
-void FeatureExtraction::Extract(FullCloudPtr pc_in, CloudPtr pc_out_edge, CloudPtr pc_out_surf)
+void FeatureExtraction::Extract(FullCloudPtr pc_in, CloudPtr pc_out_edge, CloudPtr pc_out_surf, FullCloudPtr valid_pc)
 {
     std::vector<CloudPtr> scans_in_each_line;  // 分线数的点云
     for (int i = 0; i < num_scans_; i++)
@@ -27,6 +27,7 @@ void FeatureExtraction::Extract(FullCloudPtr pc_in, CloudPtr pc_out_edge, CloudP
         if (tools::PacketsParser::isPointValid(pt))
         {
             p.intensity = pt.intensity;
+            valid_pc->push_back(pt);
         }
         else
         {
@@ -175,7 +176,7 @@ void FeatureExtraction::ExtractFromSector(const int scan_id, const CloudPtr& pc_
     {
         int ind = cloud_curvature[i].id_;
         if (std::find(picked_points.begin(), picked_points.end(), ind) == picked_points.end() &&
-            ground_mat_.at<int8_t>(scan_id, ind) == 0)
+            ground_mat_.at<int8_t>(scan_id, ind) != -1)
         {
             if (cloud_curvature[i].value_ <= 0.1)
             {
@@ -185,7 +186,7 @@ void FeatureExtraction::ExtractFromSector(const int scan_id, const CloudPtr& pc_
             largest_picked_num++;
             picked_points.push_back(ind);
 
-            if (largest_picked_num <= 20)
+            if (largest_picked_num <= 30)
             {
                 pc_out_edge->push_back(pc_in->points[ind]);
                 point_info_count++;

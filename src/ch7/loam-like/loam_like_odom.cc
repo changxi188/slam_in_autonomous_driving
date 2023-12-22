@@ -28,8 +28,9 @@ void LoamLikeOdom::ProcessPointCloud(FullCloudPtr cloud)
 {
     LOG(INFO) << "processing frame " << cnt_frame_++;
     // step 1. 提特征
-    CloudPtr current_edge(new PointCloudType), current_surf(new PointCloudType);
-    feature_extraction_->Extract(cloud, current_edge, current_surf);
+    CloudPtr     current_edge(new PointCloudType), current_surf(new PointCloudType);
+    FullCloudPtr valid_pc(new FullPointCloudType);
+    feature_extraction_->Extract(cloud, current_edge, current_surf, valid_pc);
 
     if (current_edge->size() < options_.min_edge_pts_ || current_surf->size() < options_.min_surf_pts_)
     {
@@ -56,7 +57,7 @@ void LoamLikeOdom::ProcessPointCloud(FullCloudPtr cloud)
     /// 与局部地图配准
     SE3      pose = AlignWithLocalMap(current_edge, current_surf);
     CloudPtr scan_world(new PointCloudType);
-    pcl::transformPointCloud(*ConvertToCloud<FullPointType>(cloud), *scan_world, pose.matrix());
+    pcl::transformPointCloud(*ConvertToCloud<FullPointType>(valid_pc), *scan_world, pose.matrix());
 
     CloudPtr edge_world(new PointCloudType), surf_world(new PointCloudType);
     pcl::transformPointCloud(*current_edge, *edge_world, pose.matrix());

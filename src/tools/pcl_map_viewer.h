@@ -64,6 +64,7 @@ public:
             viewer_->addCoordinateSystem(5, T, "vehicle");
             viewer_->spinOnce(1);
         }
+        LOG(INFO) << "local map size : " << local_map_->size() << ", leaf_size_ : " << leaf_size_;
 
         if (local_map_->size() > 600000)
         {
