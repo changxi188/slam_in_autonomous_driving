@@ -21,8 +21,10 @@ int main(int argc, char** argv)
     FLAGS_stderrthreshold  = google::INFO;
     FLAGS_colorlogtostderr = true;
     google::ParseCommandLineFlags(&argc, &argv, true);
+    LOG(INFO) <<"1111111";
 
     sad::RosbagIO rosbag_io(fLS::FLAGS_bag_path, sad::Str2DatasetType(FLAGS_dataset_type));
+    LOG(INFO) <<"1111111";
 
     sad::LioIEKF lio;
     lio.Init(FLAGS_config);

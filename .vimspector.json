@@ -5,18 +5,21 @@
       "filetypes": [ "cpp", "c", "objc", "rust" ], 
       "configuration": {
         "request": "launch",
-        "program": "${workspaceRoot}/bin/test_nn",
+        "program": "${workspaceRoot}/bin/test_lio_iekf",
         "args": [],
         "cwd": "${workspaceRoot}",
         "environment": [],
         "externalConsole": true,
-        "MIMode": "gdb",
+        "MIMode": "lldb",
         "setupCommands": [
           {
             "description": "Enable pretty-printing for gdb",
             "text": "-enable-pretty-printing",
             "ignoreFailures": true
           }
+        ],
+        "initCommands": [
+          "command script import /home/cheng/.lldb-eigen-data-formatter/LLDB_Eigen_Data_Formatter.py"
         ]
       }
     }

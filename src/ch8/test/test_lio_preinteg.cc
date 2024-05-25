@@ -15,9 +15,10 @@ DEFINE_string(dataset_type, "NCLT", "NCLT/ULHK/UTBM/AVIA");                   //
 DEFINE_string(config, "./config/velodyne_nclt.yaml", "path of config yaml");  // 配置文件类型
 DEFINE_bool(display_map, true, "display map?");
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     google::InitGoogleLogging(argv[0]);
-    FLAGS_stderrthreshold = google::INFO;
+    FLAGS_stderrthreshold  = google::INFO;
     FLAGS_colorlogtostderr = true;
     google::ParseCommandLineFlags(&argc, &argv, true);
 
