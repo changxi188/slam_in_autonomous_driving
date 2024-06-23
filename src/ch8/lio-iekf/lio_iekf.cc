@@ -337,13 +337,27 @@ bool esti_plane(Eigen::Matrix<T, 4, 1>& pca_result, const PointVec& point, const
 void LioIEKF::IKdtreeComputeResidualAndJacobians(const CloudPtr feats_down_body, const SE3& input_pose, Mat18d& HTVH,
                                                  Vec18d& HTVr, vector<PointVec>& Nearest_Points)
 {
-    int feats_down_size = feats_down_body->points.size();
+    auto t1              = std::chrono::steady_clock::now();
+    int  feats_down_size = feats_down_body->points.size();
 
+    normvec->resize(int(feats_down_body->points.size()));
+    laserCloudOri->clear();
+    corr_normvect->clear();
+    auto t2 = std::chrono::steady_clock::now();
+    /*
     CloudPtr laserCloudOri(new PointCloudType(100000, 1));  //有效特征点
     CloudPtr corr_normvect(new PointCloudType(100000, 1));  //有效特征点对应点法相量
     CloudPtr normvec(
         new PointCloudType(100000, 1));  //特征点在地图中对应的平面参数(平面的单位法向量,以及当前点到平面距离)
     bool point_selected_surf[100000] = {1};    //判断是否是有效特征点
+    */
+
+    auto time_used = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() * 1000;
+    LOG(INFO) << "prepare time_used : " << time_used;
+    t1 = std::chrono::steady_clock::now();
+
+    omp_set_num_threads(10);
+#pragma omp parallel for
     for (int i = 0; i < feats_down_size; i++)  //遍历所有的特征点
     {
         PointType& point_body = feats_down_body->points[i];
@@ -390,58 +404,61 @@ void LioIEKF::IKdtreeComputeResidualAndJacobians(const CloudPtr feats_down_body,
                 normvec->points[i].intensity = pd2;
             }
         }
-
-        int effct_feat_num = 0;  //有效特征点的数量
-        for (int i = 0; i < feats_down_size; i++)
-        {
-            if (point_selected_surf[i])  //对于满足要求的点
-            {
-                laserCloudOri->points[effct_feat_num] = feats_down_body->points[i];  //把这些点重新存到laserCloudOri中
-                corr_normvect->points[effct_feat_num] = normvec->points[i];  //存储这些点对应的法向量和到平面的距离
-                effct_feat_num++;
-            }
-        }
-
-        if (effct_feat_num < 1)
-        {
-            LOG(WARNING) << "No Effective Points!";
-            continue;
-        }
-
-        // 雅可比矩阵H和残差向量的计算
-        Eigen::Matrix<double, Eigen::Dynamic, 9> h_x = Eigen::MatrixXd::Zero(effct_feat_num, 9);
-        Eigen::VectorXd                          h   = Eigen::VectorXd::Zero(effct_feat_num);
-
-        for (int i = 0; i < effct_feat_num; i++)
-        {
-            Vec3d point_(laserCloudOri->points[i].x, laserCloudOri->points[i].y, laserCloudOri->points[i].z);
-            Mat3d point_crossmat;
-            point_crossmat << SKEW_SYM_MATRX(point_);
-            Vec3d point_I_ = point_;
-            Mat3d point_I_crossmat;
-            point_I_crossmat << SKEW_SYM_MATRX(point_I_);
-
-            // 得到对应的平面的法向量
-            const PointType& norm_p = corr_normvect->points[i];
-            Vec3d            norm_vec(norm_p.x, norm_p.y, norm_p.z);
-
-            // 计算雅可比矩阵H
-            Vec3d C(input_pose.so3().matrix().transpose() * norm_vec);
-            Vec3d A(point_I_crossmat * C);
-            h_x.block<1, 9>(i, 0) << norm_p.x, norm_p.y, norm_p.z, 0.0, 0.0, 0.0, VEC_FROM_ARRAY(A);
-
-            //残差：点面距离
-            h(i) = -norm_p.intensity;
-        }
-
-        HTVH.setZero();
-        HTVr.setZero();
-        HTVH.block<9, 9>(0, 0) = (h_x.transpose() * h_x) / LASER_POINT_COV;
-        HTVr.block<9, 1>(0, 0) = (h_x.transpose() * h) / LASER_POINT_COV;
     }
 
-    LOG(INFO) << "IKDTREE HTVr : \n" << HTVr;
-    LOG(INFO) << "IKDTREE HTVH : \n" << HTVH;
+    int effct_feat_num = 0;  //有效特征点的数量
+    for (int i = 0; i < feats_down_size; i++)
+    {
+        if (point_selected_surf[i])  //对于满足要求的点
+        {
+            laserCloudOri->points[effct_feat_num] = feats_down_body->points[i];  //把这些点重新存到laserCloudOri中
+            corr_normvect->points[effct_feat_num] = normvec->points[i];  //存储这些点对应的法向量和到平面的距离
+            effct_feat_num++;
+        }
+    }
+
+    if (effct_feat_num < 1)
+    {
+        LOG(WARNING) << "No Effective Points!";
+        return;
+    }
+
+    // 雅可比矩阵H和残差向量的计算
+    Eigen::Matrix<double, Eigen::Dynamic, 9> h_x = Eigen::MatrixXd::Zero(effct_feat_num, 9);
+    Eigen::VectorXd                          h   = Eigen::VectorXd::Zero(effct_feat_num);
+
+    for (int i = 0; i < effct_feat_num; i++)
+    {
+        Vec3d point_(laserCloudOri->points[i].x, laserCloudOri->points[i].y, laserCloudOri->points[i].z);
+        Mat3d point_crossmat;
+        point_crossmat << SKEW_SYM_MATRX(point_);
+        Vec3d point_I_ = point_;
+        Mat3d point_I_crossmat;
+        point_I_crossmat << SKEW_SYM_MATRX(point_I_);
+
+        // 得到对应的平面的法向量
+        const PointType& norm_p = corr_normvect->points[i];
+        Vec3d            norm_vec(norm_p.x, norm_p.y, norm_p.z);
+
+        // 计算雅可比矩阵H
+        Vec3d C(input_pose.so3().matrix().transpose() * norm_vec);
+        Vec3d A(point_I_crossmat * C);
+        h_x.block<1, 9>(i, 0) << norm_p.x, norm_p.y, norm_p.z, 0.0, 0.0, 0.0, VEC_FROM_ARRAY(A);
+
+        //残差：点面距离
+        h(i) = -norm_p.intensity;
+    }
+
+    HTVH.setZero();
+    HTVr.setZero();
+    HTVH.block<9, 9>(0, 0) = (h_x.transpose() * h_x) / LASER_POINT_COV;
+    HTVr.block<9, 1>(0, 0) = (h_x.transpose() * h) / LASER_POINT_COV;
+    t2                     = std::chrono::steady_clock::now();
+    time_used              = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() * 1000;
+    LOG(INFO) << "for every point time_used : " << time_used;
+
+    // LOG(INFO) << "IKDTREE HTVr : \n" << HTVr;
+    // LOG(INFO) << "IKDTREE HTVH : \n" << HTVH;
 }
 
 void LioIEKF::Align()
@@ -463,7 +480,7 @@ void LioIEKF::Align()
         CloudPtr current_scan_filter(new PointCloudType);
         voxel.filter(*current_scan_filter);
 
-        ndt_.AddCloud(current_scan_);
+        // ndt_.AddCloud(current_scan_);
         flg_first_scan_ = false;
 
         ikdtree.set_downsample_param(filter_size_map_min);
@@ -483,6 +500,7 @@ void LioIEKF::Align()
 
     // 后续的scan，使用NDT配合pose进行更新
     LOG(INFO) << "=== frame " << frame_num_;
+    LOG(INFO) << "used point number : " << current_scan_filter->size();
 
     vector<PointVec> Nearest_Points;
     Nearest_Points.resize(current_scan_filter->size());
@@ -497,8 +515,9 @@ void LioIEKF::Align()
 
     // 若运动了一定范围，则把点云放入地图中
     SE3 current_pose = ieskf_.GetNominalSE3();
-    SE3 delta_pose   = last_pose_.inverse() * current_pose;
 
+    /*
+    SE3 delta_pose   = last_pose_.inverse() * current_pose;
     if (delta_pose.translation().norm() > 1.0 || delta_pose.so3().log().norm() > math::deg2rad(10.0))
     {
         // 将地图合入NDT中
@@ -507,6 +526,7 @@ void LioIEKF::Align()
         ndt_.AddCloud(current_scan_world);
         last_pose_ = current_pose;
     }
+    */
 
     MapIncremental(current_scan_filter, current_pose, Nearest_Points);
 

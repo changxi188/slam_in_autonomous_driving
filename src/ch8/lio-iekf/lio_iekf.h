@@ -98,8 +98,8 @@ private:
     CloudPtr     current_scan_ = nullptr;
 
     /// NDT数据
-    IncNdt3d ndt_;
-    SE3      last_pose_;
+    // IncNdt3d ndt_;
+    SE3 last_pose_;
 
     // flags
     bool imu_need_init_  = true;
@@ -125,7 +125,12 @@ private:
     double                        cube_len      = 1000;
     const float                   MOV_THRESHOLD = 1.5f;
     float                         DET_RANGE     = 300.0f;  // 激光雷达的最大探测范围
-    // int                           feats_down_size = 0;
+
+    CloudPtr laserCloudOri{new PointCloudType(100000, 1)};  //有效特征点
+    CloudPtr corr_normvect{new PointCloudType(100000, 1)};  //有效特征点对应点法相量
+    //特征点在地图中对应的平面参数(平面的单位法向量,以及当前点到平面距离)
+    CloudPtr normvec{new PointCloudType(100000, 1)};
+    bool     point_selected_surf[100000] = {1};  //判断是否是有效特征点
 };
 
 }  // namespace sad
