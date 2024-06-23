@@ -10,15 +10,19 @@
 #include "ch7/loosely_coupled_lio/cloud_convert.h"
 #include "ch7/loosely_coupled_lio/measure_sync.h"
 #include "ch7/ndt_inc.h"
+#include "ch8/ikd-Tree/ikd_Tree.h"
 #include "ch8/lio-iekf/iekf.hpp"
-
 #include "tools/ui/pangolin_window.h"
 
 namespace sad
 {
+#define SKEW_SYM_MATRX(v) 0.0, -v[2], v[1], v[2], 0.0, -v[0], -v[1], v[0], 0.0
+#define VEC_FROM_ARRAY(v) v[0], v[1], v[2]
+#define LASER_POINT_COV (0.1)
 class LioIEKF
 {
 public:
+    const static int NUM_MATCH_POINTS = 5;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
     struct Options
@@ -77,6 +81,14 @@ private:
     /// 执行一次配准和观测
     void Align();
 
+    void LasermapFovSegment();
+
+    void MapIncremental(const CloudPtr feats_down_body, const SE3& current_pose,
+                        const vector<PointVec>& Nearest_Points);
+
+    void IKdtreeComputeResidualAndJacobians(const CloudPtr pointcloud, const SE3& input_pose, Mat18d& HTVH,
+                                            Vec18d& HTVr, vector<PointVec>& Nearest_Points);
+
     /// modules
     std::shared_ptr<MessageSync> sync_ = nullptr;
     StaticIMUInit                imu_init_;
@@ -102,6 +114,18 @@ private:
 
     Options                             options_;
     std::shared_ptr<ui::PangolinWindow> ui_ = nullptr;
+
+    double                      filter_size_map_min = 0.5;
+    IKDTREE::KD_TREE<PointType> ikdtree;
+
+    vector<IKDTREE::BoxPointType> cub_needrm;
+    int                           kdtree_delete_counter = 0;
+    bool                          Localmap_Initialized  = false;  // 局部地图是否初始化
+    IKDTREE::BoxPointType         LocalMap_Points;                // ikd-tree地图立方体的2个角点
+    double                        cube_len      = 1000;
+    const float                   MOV_THRESHOLD = 1.5f;
+    float                         DET_RANGE     = 300.0f;  // 激光雷达的最大探测范围
+    // int                           feats_down_size = 0;
 };
 
 }  // namespace sad

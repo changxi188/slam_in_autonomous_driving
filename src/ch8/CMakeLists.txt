@@ -1,6 +1,7 @@
 add_library(${PROJECT_NAME}.ch8
         lio-iekf/lio_iekf.cc
         lio-preinteg/lio_preinteg.cc
+        ikd-Tree/ikd_Tree.cpp
         )
 
 target_link_libraries(${PROJECT_NAME}.ch8
@@ -17,9 +18,9 @@ target_link_libraries(test_lio_iekf
         ${PROJECT_NAME}.ch4
         )
 
-add_executable(test_lio_preinteg test/test_lio_preinteg.cc)
-target_link_libraries(test_lio_preinteg
-        ${PROJECT_NAME}.ch8
-        ${PROJECT_NAME}.ch7
-        ${PROJECT_NAME}.ch4
-        )
+    #add_executable(test_lio_preinteg test/test_lio_preinteg.cc)
+    #target_link_libraries(test_lio_preinteg
+    #        ${PROJECT_NAME}.ch8
+    #        ${PROJECT_NAME}.ch7
+    #        ${PROJECT_NAME}.ch4
+    #        )

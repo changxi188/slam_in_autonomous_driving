@@ -347,6 +347,8 @@ void IncNdt3d::ComputeResidualAndJacobians(const SE3& input_pose, Mat18d& HTVH, 
     }
 
     LOG(INFO) << "effective: " << effective_num;
+    LOG(INFO) << "HTVr : \n" << HTVr;
+    LOG(INFO) << "HTVH : \n" << HTVH;
 }
 
 void IncNdt3d::BuildNDTEdges(sad::VertexPose* v, std::vector<EdgeNDT*>& edges)
