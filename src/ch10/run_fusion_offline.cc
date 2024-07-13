@@ -11,19 +11,21 @@
 
 DEFINE_string(config_yaml, "./config/mapping.yaml", "配置文件");
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
     google::InitGoogleLogging(argv[0]);
-    FLAGS_stderrthreshold = google::INFO;
+    FLAGS_stderrthreshold  = google::INFO;
     FLAGS_colorlogtostderr = true;
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     sad::Fusion fusion(FLAGS_config_yaml);
-    if (!fusion.Init()) {
+    if (!fusion.Init())
+    {
         return -1;
     }
 
-    auto yaml = YAML::LoadFile(FLAGS_config_yaml);
-    auto bag_path = yaml["bag_path"].as<std::string>();
+    auto          yaml     = YAML::LoadFile(FLAGS_config_yaml);
+    auto          bag_path = yaml["bag_path"].as<std::string>();
     sad::RosbagIO rosbag_io(bag_path, sad::DatasetType::NCLT);
 
     /// 把各种消息交给fusion

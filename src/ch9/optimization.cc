@@ -2,8 +2,8 @@
 // Created by xiang on 22-12-8.
 //
 
-#include "optimization.h"
 #include "common/math_utils.h"
+#include "optimization.h"
 
 #include <g2o/core/block_solver.h>
 #include <g2o/core/optimization_algorithm_levenberg.h>
@@ -14,23 +14,27 @@
 #include <yaml-cpp/yaml.h>
 #include <boost/format.hpp>
 
-namespace sad {
-
+namespace sad
+{
 /// 打印优化信息
 template <typename T>
-std::string print_info(const std::vector<T>& edges, double th) {
+std::string print_info(const std::vector<T>& edges, double th)
+{
     std::vector<double> chi2;
-    for (auto& edge : edges) {
-        if (edge->level() == 0) {
+    for (auto& edge : edges)
+    {
+        if (edge->level() == 0)
+        {
             edge->computeError();
             chi2.push_back(edge->chi2());
         }
     }
 
     std::sort(chi2.begin(), chi2.end());
-    double ave_chi2 = std::accumulate(chi2.begin(), chi2.end(), 0.0) / chi2.size();
+    double        ave_chi2 = std::accumulate(chi2.begin(), chi2.end(), 0.0) / chi2.size();
     boost::format fmt("数量: %d, 均值: %f, 中位数: %f, 0.1分位: %f, 0.9分位: %f, 0.95分位：%f, 最大值: %f, 阈值: %f\n");
-    if (!chi2.empty()) {
+    if (!chi2.empty())
+    {
         std::string str = (fmt % chi2.size() % ave_chi2 % chi2[chi2.size() / 2] % chi2[int(chi2.size() * 0.1)] %
                            chi2[int(chi2.size() * 0.9)] % chi2[int(chi2.size() * 0.95)] % chi2.back() % th)
                               .str();
@@ -39,12 +43,17 @@ std::string print_info(const std::vector<T>& edges, double th) {
     return std::string();
 }
 
-Optimization::Optimization(const std::string& yaml) { yaml_ = yaml; }
+Optimization::Optimization(const std::string& yaml)
+{
+    yaml_ = yaml;
+}
 
-bool Optimization::Init(int stage) {
+bool Optimization::Init(int stage)
+{
     stage_ = stage;
 
-    if (!LoadKeyFrames("./data/ch9/keyframes.txt", keyframes_)) {
+    if (!LoadKeyFrames("./data/ch9/keyframes.txt", keyframes_))
+    {
         LOG(ERROR) << "cannot load keyframes.txt";
         return false;
     }
@@ -52,28 +61,31 @@ bool Optimization::Init(int stage) {
     LOG(INFO) << "keyframes: " << keyframes_.size();
 
     // 读参数
-    auto yaml = YAML::LoadFile(yaml_);
-    rtk_outlier_th_ = yaml["rtk_outlier_th"].as<double>();
+    auto yaml             = YAML::LoadFile(yaml_);
+    rtk_outlier_th_       = yaml["rtk_outlier_th"].as<double>();
     lidar_continuous_num_ = yaml["lidar_continuous_num"].as<int>();
-    rtk_has_rot_ = yaml["rtk_has_rot"].as<bool>();
+    rtk_has_rot_          = yaml["rtk_has_rot"].as<bool>();
 
-    rtk_pos_noise_ = yaml["rtk_pos_noise"].as<double>();
-    rtk_ang_noise_ = yaml["rtk_ang_noise"].as<double>() * math::kDEG2RAD;
+    rtk_pos_noise_          = yaml["rtk_pos_noise"].as<double>();
+    rtk_ang_noise_          = yaml["rtk_ang_noise"].as<double>() * math::kDEG2RAD;
     rtk_height_noise_ratio_ = yaml["rtk_height_noise_ratio"].as<double>();
 
     std::vector<double> rtk_ext_t = yaml["rtk_ext"]["t"].as<std::vector<double>>();
-    TBG_ = SE3(SO3(), Vec3d(rtk_ext_t[0], rtk_ext_t[1], rtk_ext_t[2]));
+    TBG_                          = SE3(SO3(), Vec3d(rtk_ext_t[0], rtk_ext_t[1], rtk_ext_t[2]));
     LOG(INFO) << "TBG = \n" << TBG_.matrix();
 
-    if (stage_ == 2) {
+    if (stage_ == 2)
+    {
         LoadLoopCandidates();
     }
     return true;
 }
 
-void Optimization::Run() {
+void Optimization::Run()
+{
     LOG(INFO) << "running optimization on stage " << stage_;
-    if (!rtk_has_rot_ && stage_ == 1) {
+    if (!rtk_has_rot_ && stage_ == 1)
+    {
         InitialAlign();
     }
 
@@ -94,25 +106,30 @@ void Optimization::Run() {
     LOG(INFO) << "done";
 }
 
-void Optimization::SaveG2O(const std::string& file_name) {
+void Optimization::SaveG2O(const std::string& file_name)
+{
     std::ofstream fout(file_name);
-    for (auto& v : vertices_) {
+    for (auto& v : vertices_)
+    {
         v.second->write(fout);
     }
 
-    for (auto& e : lidar_edge_) {
+    for (auto& e : lidar_edge_)
+    {
         e->write(fout);
     }
-    for (auto& e : loop_edge_) {
+    for (auto& e : loop_edge_)
+    {
         e->write(fout);
     }
     fout.close();
 }
 
-void Optimization::BuildProblem() {
-    using BlockSolverType = g2o::BlockSolverX;
+void Optimization::BuildProblem()
+{
+    using BlockSolverType  = g2o::BlockSolverX;
     using LinearSolverType = g2o::LinearSolverEigen<BlockSolverType::PoseMatrixType>;
-    auto* solver = new g2o::OptimizationAlgorithmLevenberg(
+    auto* solver           = new g2o::OptimizationAlgorithmLevenberg(
         g2o::make_unique<BlockSolverType>(g2o::make_unique<LinearSolverType>()));
 
     optimizer_.setAlgorithm(solver);
@@ -123,17 +140,22 @@ void Optimization::BuildProblem() {
     AddLoopEdges();
 }
 
-void Optimization::AddVertices() {
-    for (auto& kfp : keyframes_) {
+void Optimization::AddVertices()
+{
+    for (auto& kfp : keyframes_)
+    {
         auto kf = kfp.second;
 
         // make g2o vertex for this kf
         auto v = new VertexPose();
         v->setId(kf->id_);
 
-        if (stage_ == 1) {
+        if (stage_ == 1)
+        {
             v->setEstimate(kf->lidar_pose_);
-        } else {
+        }
+        else
+        {
             v->setEstimate(kf->opti_pose_1_);
         }
 
@@ -143,7 +165,8 @@ void Optimization::AddVertices() {
     LOG(INFO) << "vertex: " << vertices_.size();
 }
 
-void Optimization::AddRTKEdges() {
+void Optimization::AddRTKEdges()
+{
     /// RTK 噪声设置
     Mat3d info_pos = Mat3d::Identity() * 1.0 / (rtk_pos_noise_ * rtk_pos_noise_);
     info_pos(2, 2) = 1.0 / (rtk_height_noise_ratio_ * rtk_pos_noise_ * rtk_height_noise_ratio_ * rtk_pos_noise_);
@@ -154,18 +177,22 @@ void Optimization::AddRTKEdges() {
 
     LOG(INFO) << "Info of rtk trans: " << info_pos.diagonal().transpose();
 
-    if (stage_ == 2) {
+    if (stage_ == 2)
+    {
         info_pos *= 0.01;
         info_all *= 0.01;
     }
 
-    for (auto& kfp : keyframes_) {
+    for (auto& kfp : keyframes_)
+    {
         auto kf = kfp.second;
-        if (!kf->rtk_valid_) {
+        if (!kf->rtk_valid_)
+        {
             continue;
         }
 
-        if (kf->rtk_heading_valid_) {
+        if (kf->rtk_heading_valid_)
+        {
             auto edge = new EdgeGNSS(vertices_.at(kf->id_), kf->rtk_pose_);
             edge->setInformation(info_all);
             auto rk = new g2o::RobustKernelHuber();
@@ -173,7 +200,9 @@ void Optimization::AddRTKEdges() {
             edge->setRobustKernel(rk);
             optimizer_.addEdge(edge);
             gnss_edge_.emplace_back(edge);
-        } else {
+        }
+        else
+        {
             auto edge = new EdgeGNSSTransOnly(vertices_.at(kf->id_), kf->rtk_pose_.translation(), TBG_);
             edge->setInformation(info_pos);
             auto rk = new g2o::RobustKernelCauchy();
@@ -187,20 +216,24 @@ void Optimization::AddRTKEdges() {
     LOG(INFO) << "gnss edges: " << gnss_edge_.size() << ", " << gnss_trans_edge_.size();
 }
 
-void Optimization::AddLidarEdges() {
+void Optimization::AddLidarEdges()
+{
     const double lidar_pos_noise = 0.01, lidar_ang_noise = 0.1 * math::kDEG2RAD;  // RTK 观测的噪声
-    Mat3d info_pos = Mat3d::Identity() * 1.0 / (lidar_pos_noise * lidar_pos_noise);
-    Mat3d info_ang = Mat3d::Identity() * 1.0 / (lidar_ang_noise * lidar_ang_noise);
-    Mat6d info_all = Mat6d::Identity();
+    Mat3d        info_pos      = Mat3d::Identity() * 1.0 / (lidar_pos_noise * lidar_pos_noise);
+    Mat3d        info_ang      = Mat3d::Identity() * 1.0 / (lidar_ang_noise * lidar_ang_noise);
+    Mat6d        info_all      = Mat6d::Identity();
     info_all.block<3, 3>(0, 0) = info_pos;
     info_all.block<3, 3>(3, 3) = info_ang;
 
-    for (auto iter = keyframes_.begin(); iter != keyframes_.end(); ++iter) {
+    for (auto iter = keyframes_.begin(); iter != keyframes_.end(); ++iter)
+    {
         auto iter_next = iter;
-        for (int i = 0; i < lidar_continuous_num_; ++i) {
+        for (int i = 0; i < lidar_continuous_num_; ++i)
+        {
             iter_next++;
 
-            if (iter_next == keyframes_.end()) {
+            if (iter_next == keyframes_.end())
+            {
                 break;
             }
 
@@ -216,21 +249,24 @@ void Optimization::AddLidarEdges() {
     LOG(INFO) << "lidar edges: " << lidar_edge_.size();
 }
 
-void Optimization::AddLoopEdges() {
-    if (stage_ == 1) {
+void Optimization::AddLoopEdges()
+{
+    if (stage_ == 1)
+    {
         return;
     }
 
     const double loop_pos_noise = 0.1, loop_ang_noise = 0.5 * math::kDEG2RAD;  // RTK 观测的噪声
-    Mat3d info_pos = Mat3d::Identity() * 1.0 / (loop_pos_noise * loop_pos_noise);
-    Mat3d info_ang = Mat3d::Identity() * 1.0 / (loop_ang_noise * loop_ang_noise);
-    Mat6d info_all = Mat6d::Identity();
+    Mat3d        info_pos      = Mat3d::Identity() * 1.0 / (loop_pos_noise * loop_pos_noise);
+    Mat3d        info_ang      = Mat3d::Identity() * 1.0 / (loop_ang_noise * loop_ang_noise);
+    Mat6d        info_all      = Mat6d::Identity();
     info_all.block<3, 3>(0, 0) = info_pos;
     info_all.block<3, 3>(3, 3) = info_ang;
 
     const double loop_rk_th = 5.2;
 
-    for (const auto& lc : loop_candidates_) {
+    for (const auto& lc : loop_candidates_)
+    {
         auto edge = new EdgeRelativeMotion(vertices_.at(lc.idx1_), vertices_.at(lc.idx2_), lc.Tij_);
         edge->setInformation(info_all);
         auto rk = new g2o::RobustKernelCauchy();
@@ -241,7 +277,8 @@ void Optimization::AddLoopEdges() {
     }
 }
 
-void Optimization::Solve() {
+void Optimization::Solve()
+{
     optimizer_.setVerbose(true);
     optimizer_.initializeOptimization(0);
     optimizer_.optimize(100);
@@ -252,14 +289,18 @@ void Optimization::Solve() {
     LOG(INFO) << "loop 误差：" << print_info(loop_edge_, 0);
 }
 
-void Optimization::RemoveOutliers() {
+void Optimization::RemoveOutliers()
+{
     // 主要用于移除GNSS的异常值
-    int cnt_outlier_removed = 0;
-    auto remove_outlier = [&cnt_outlier_removed](g2o::OptimizableGraph::Edge* e) {
-        if (e->chi2() > e->robustKernel()->delta()) {
+    int  cnt_outlier_removed = 0;
+    auto remove_outlier      = [&cnt_outlier_removed](g2o::OptimizableGraph::Edge* e) {
+        if (e->chi2() > e->robustKernel()->delta())
+        {
             e->setLevel(1);
             cnt_outlier_removed++;
-        } else {
+        }
+        else
+        {
             e->setRobustKernel(nullptr);
         }
     };
@@ -273,22 +314,28 @@ void Optimization::RemoveOutliers() {
     LOG(INFO) << "loop outlier: " << cnt_outlier_removed << "/" << loop_edge_.size();
 }
 
-void Optimization::SaveResults() {
-    for (auto& v : vertices_) {
-        if (stage_ == 1) {
+void Optimization::SaveResults()
+{
+    for (auto& v : vertices_)
+    {
+        if (stage_ == 1)
+        {
             keyframes_.at(v.first)->opti_pose_1_ = v.second->estimate();
-        } else {
+        }
+        else
+        {
             keyframes_.at(v.first)->opti_pose_2_ = v.second->estimate();
         }
     }
 
     // 比较优化pose和rtk pose
     std::vector<double> rtk_trans_error;
-    for (auto& kfp : keyframes_) {
-        auto kf = kfp.second;
-        Vec3d tWG = kf->rtk_pose_.translation();
-        Vec3d t_opti = (kf->opti_pose_1_ * TBG_).translation();
-        double n = (tWG - t_opti).head<2>().norm();
+    for (auto& kfp : keyframes_)
+    {
+        auto   kf     = kfp.second;
+        Vec3d  tWG    = kf->rtk_pose_.translation();
+        Vec3d  t_opti = (kf->opti_pose_1_ * TBG_).translation();
+        double n      = (tWG - t_opti).head<2>().norm();
         rtk_trans_error.emplace_back(n);
     }
 
@@ -298,23 +345,27 @@ void Optimization::SaveResults() {
     // 写入文件
     system("rm ./data/ch9/keyframes.txt");
     std::ofstream fout("./data/ch9/keyframes.txt");
-    for (auto& kfp : keyframes_) {
+    for (auto& kfp : keyframes_)
+    {
         kfp.second->Save(fout);
     }
     fout.close();
 }
 
-void Optimization::InitialAlign() {
+void Optimization::InitialAlign()
+{
     // should be p1 = R*p2 + t
     std::vector<Vec3d> pts1, pts2;
-    for (auto& kfp : keyframes_) {
+    for (auto& kfp : keyframes_)
+    {
         pts1.emplace_back(kfp.second->rtk_pose_.translation());
         pts2.emplace_back(kfp.second->lidar_pose_.translation());
     }
 
     Vec3d p1, p2;  // center of mass
-    int N = pts1.size();
-    for (int i = 0; i < N; i++) {
+    int   N = pts1.size();
+    for (int i = 0; i < N; i++)
+    {
         p1 += pts1[i];
         p2 += pts2[i];
     }
@@ -324,23 +375,26 @@ void Optimization::InitialAlign() {
     LOG(INFO) << "p1: " << p1.transpose() << ", p2: " << p2.transpose();
 
     std::vector<Vec3d> q1(N), q2(N);  // remove the center
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++)
+    {
         q1[i] = pts1[i] - p1;
         q2[i] = pts2[i] - p2;
     }
 
     // compute q1*q2^T
     Mat3d W = Mat3d::Zero();
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++)
+    {
         W += q1[i] * q2[i].transpose();
     }
 
     // SVD on W
     Eigen::JacobiSVD<Mat3d> svd(W, Eigen::ComputeFullU | Eigen::ComputeFullV);
-    Mat3d U = svd.matrixU();
-    Mat3d V = svd.matrixV();
-    Mat3d R = U * (V.transpose());
-    if (R.determinant() < 0) {
+    Mat3d                   U = svd.matrixU();
+    Mat3d                   V = svd.matrixV();
+    Mat3d                   R = U * (V.transpose());
+    if (R.determinant() < 0)
+    {
         R = -R;
     }
     Vec3d t = p1 - R * p2;
@@ -348,30 +402,35 @@ void Optimization::InitialAlign() {
     // change lidar pose
     SE3 T(R, t);
     LOG(INFO) << "initial trans: \n" << T.matrix();
-    for (auto& kfp : keyframes_) {
+    for (auto& kfp : keyframes_)
+    {
         kfp.second->lidar_pose_ = T * kfp.second->lidar_pose_;
     }
 }
 
-void Optimization::LoadLoopCandidates() {
+void Optimization::LoadLoopCandidates()
+{
     std::ifstream fin("./data/ch9/loops.txt");
-    if (!fin) {
+    if (!fin)
+    {
         LOG(WARNING) << "cannot load file: ./data/ch9/loops.txt";
         return;
     }
 
     auto load_SE3 = [](std::istream& f) -> SE3 {
-        SE3 ret;
+        SE3    ret;
         double q[4];
         double t[3];
         f >> t[0] >> t[1] >> t[2] >> q[0] >> q[1] >> q[2] >> q[3];
         return SE3(Quatd(q[3], q[0], q[1], q[2]), Vec3d(t[0], t[1], t[2]));
     };
 
-    while (fin.eof() == false) {
+    while (fin.eof() == false)
+    {
         std::string line;
         std::getline(fin, line);
-        if (line.empty()) {
+        if (line.empty())
+        {
             break;
         }
 
