@@ -50,7 +50,9 @@ void Keyframe::Load(std::istream& is)
         double q[4];
         double t[3];
         f >> t[0] >> t[1] >> t[2] >> q[0] >> q[1] >> q[2] >> q[3];
-        return SE3(Quatd(q[3], q[0], q[1], q[2]), Vec3d(t[0], t[1], t[2]));
+        ret = SE3(Quatd(q[3], q[0], q[1], q[2]), Vec3d(t[0], t[1], t[2]));
+        return ret;
+        // return SE3(Quatd(1.0, 0.0, 0.0, 0.0), Vec3d(0.0, 0.0, 0.0));
     };
     lidar_pose_  = load_SE3(is);
     rtk_pose_    = load_SE3(is);

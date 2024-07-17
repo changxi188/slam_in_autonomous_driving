@@ -47,12 +47,6 @@ bool Fusion::Init()
     return true;
 }
 
-void Fusion::ProcessRTK(GNSSPtr gnss)
-{
-    gnss->utm_pose_.translation() -= map_origin_;  // 减掉地图原点
-    last_gnss_ = gnss;
-}
-
 void Fusion::ProcessMeasurements(const MeasureGroup& meas)
 {
     measures_ = meas;
@@ -347,6 +341,12 @@ void Fusion::LoadMapIndex()
         map_data_index_.emplace(Vec2i(x, y));
     }
     fin.close();
+}
+
+void Fusion::ProcessRTK(GNSSPtr gnss)
+{
+    gnss->utm_pose_.translation() -= map_origin_;  // 减掉地图原点
+    last_gnss_ = gnss;
 }
 
 void Fusion::ProcessIMU(IMUPtr imu)

@@ -73,18 +73,19 @@ int main(int argc, char** argv)
         kf->LoadScan("./data/ch9/");
 
         CloudPtr cloud_trans(new PointCloudType);
-        pcl::transformPointCloud(*kf->cloud_, *cloud_trans, pose.matrix());
+        pcl::transformPointCloud(*kf->cloud_, *cloud_trans, pose.matrix().cast<float>());
 
         // voxel size
         CloudPtr kf_cloud_voxeled(new PointCloudType);
         voxel_grid_filter.setInputCloud(cloud_trans);
         voxel_grid_filter.filter(*kf_cloud_voxeled);
 
-        *global_cloud += *kf_cloud_voxeled;
+        // *global_cloud += *kf_cloud_voxeled;
+        *global_cloud += *cloud_trans;
         kf->cloud_ = nullptr;
 
         LOG(INFO) << "merging " << cnt << " in " << keyframes.size() << ", pts: " << kf_cloud_voxeled->size()
-                  << " global pts: " << global_cloud->size();
+                  << " global pts: " << global_cloud->size() << ", id : " << kfp.first;
         cnt++;
     }
 

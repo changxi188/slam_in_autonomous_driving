@@ -44,7 +44,7 @@ bool Frontend::Init()
 
 void Frontend::Run()
 {
-    sad::RosbagIO rosbag_io(bag_path_, DatasetType::AVIA);
+    sad::RosbagIO rosbag_io(bag_path_, DatasetType::NCLT);
 
     /*
     // 先提取RTK pose，注意NCLT只有平移部分
