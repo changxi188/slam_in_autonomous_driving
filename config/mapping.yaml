@@ -1,6 +1,6 @@
 YAML: 1.0
-bag_path: /home/cheng/code/slam_in_autonomous_driving/dataset/sad/nclt/20130110.bag
-lio_yaml: ./config/velodyne_nclt.yaml
+bag_path: /home/cheng/code/slam_in_autonomous_driving/dataset/sad/avia/HKU_MB_2020-09-20-13-34-51.bag
+lio_yaml: ./config/avia.yaml
 map_data: ./data/ch9/map_data/
 origin:
   - 276726.5626579862

@@ -19,7 +19,6 @@ DEFINE_string(dump_to, "./data/ch9/", "导出的目标路径");
 /**
  * 将keyframes.txt中的地图和点云合并为一个pcd
  */
-
 int main(int argc, char** argv)
 {
     google::ParseCommandLineFlags(&argc, &argv, true);

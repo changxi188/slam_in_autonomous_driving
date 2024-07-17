@@ -5,7 +5,7 @@
       "filetypes": [ "cpp", "c", "objc", "rust" ], 
       "configuration": {
         "request": "launch",
-        "program": "${workspaceRoot}/bin/test_lio_iekf",
+        "program": "${workspaceRoot}/bin/run_mapping",
         "args": [],
         "cwd": "${workspaceRoot}",
         "environment": [],

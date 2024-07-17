@@ -87,8 +87,8 @@ std::string RosbagIO::GetLidarTopicName() const
 
 void RosbagIO::Go()
 {
-    rosbag::Bag bag(bag_file_);
     LOG(INFO) << "running in " << bag_file_ << ", reg process func: " << process_func_.size();
+    rosbag::Bag bag(bag_file_);
 
     if (!bag.isOpen())
     {
