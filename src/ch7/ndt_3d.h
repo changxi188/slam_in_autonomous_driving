@@ -96,6 +96,11 @@ public:
     /// 使用gauss-newton方法进行ndt配准
     bool AlignNdt(SE3& init_pose);
 
+    double GetScore()
+    {
+        return score_;
+    }
+
 private:
     void BuildVoxels();
 
@@ -115,6 +120,8 @@ private:
 
     std::unordered_map<KeyType, VoxelData, hash_vec<3>> grids_;         // 栅格数据
     std::vector<KeyType>                                nearby_grids_;  // 附近的栅格
+
+    double score_ = 0;
 };
 
 }  // namespace sad

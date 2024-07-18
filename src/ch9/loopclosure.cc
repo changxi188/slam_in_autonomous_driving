@@ -11,6 +11,7 @@
 #include <yaml-cpp/yaml.h>
 #include <execution>
 
+#include "ch7/ndt_3d.h"
 #include "common/lidar_utils.h"
 #include "common/point_cloud_utils.h"
 
@@ -117,7 +118,6 @@ void LoopClosure::ComputeLoopCandidates()
 
 void LoopClosure::ComputeForCandidate(sad::LoopCandidate& c)
 {
-    LOG(INFO) << "aligning " << c.idx1_ << " with " << c.idx2_;
     const int submap_idx_range = 40;
     KFPtr     kf1 = keyframes_.at(c.idx1_), kf2 = keyframes_.at(c.idx2_);
 
@@ -173,35 +173,48 @@ void LoopClosure::ComputeForCandidate(sad::LoopCandidate& c)
         return;
     }
 
-    pcl::NormalDistributionsTransform<PointType, PointType> ndt;
+    Ndt3d::Options options;
+    Ndt3d          ndt(options);
 
-    ndt.setTransformationEpsilon(0.05);
-    ndt.setStepSize(0.7);
-    ndt.setMaximumIterations(40);
+    // pcl::NormalDistributionsTransform<PointType, PointType> ndt;
 
-    Mat4f Tw2 = kf2->opti_pose_1_.matrix().cast<float>();
+    // ndt.setTransformationEpsilon(0.02);
+    // ndt.setStepSize(0.2);
+    // ndt.setMaximumIterations(100);
+
+    // Mat4f Tw2 = kf2->opti_pose_1_.matrix().cast<float>();
+    SE3 Tw2 = kf2->opti_pose_1_;
 
     /// 不同分辨率下的匹配
     CloudPtr            output(new PointCloudType);
     std::vector<double> res{10.0, 5.0, 4.0, 3.0};
     for (auto& r : res)
     {
-        ndt.setResolution(r);
         auto rough_map1 = VoxelCloud(submap_kf1, r * 0.1);
         auto rough_map2 = VoxelCloud(submap_kf2, r * 0.1);
-        ndt.setInputTarget(rough_map1);
-        ndt.setInputSource(rough_map2);
+        // ndt.setResolution(r);
+        // ndt.setInputTarget(rough_map1);
+        // ndt.setInputSource(rough_map2);
 
-        ndt.align(*output, Tw2);
-        Tw2 = ndt.getFinalTransformation();
+        // ndt.align(*output, Tw2);
+        // Tw2 = ndt.getFinalTransformation();
+
+        ndt.SetTarget(rough_map1);
+        ndt.SetSource(rough_map2);
+        ndt.AlignNdt(Tw2);
     }
 
+    /*
     Mat4d T = Tw2.cast<double>();
     Quatd q(T.block<3, 3>(0, 0));
     q.normalize();
-    Vec3d t      = T.block<3, 1>(0, 3);
-    c.Tij_       = kf1->opti_pose_1_.inverse() * SE3(q, t);
-    c.ndt_score_ = ndt.getTransformationProbability();
+    Vec3d t = T.block<3, 1>(0, 3);
+    c.Tij_ = kf1->opti_pose_1_.inverse() * Tw2;
+    // c.ndt_score_ = ndt.getTransformationProbability();
+    */
+    c.Tij_       = kf1->opti_pose_1_.inverse() * Tw2;
+    c.ndt_score_ = ndt.GetScore();
+    LOG(INFO) << "aligning " << c.idx1_ << " with " << c.idx2_ << ", score : " << c.ndt_score_;
 }
 
 void LoopClosure::SaveResults()

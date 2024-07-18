@@ -108,6 +108,7 @@ bool Ndt3d::AlignNdt(SE3& init_pose)
 
     for (int iter = 0; iter < options_.max_iteration_; ++iter)
     {
+        score_ = 0;
         std::vector<bool>                        effect_pts(total_size, false);
         std::vector<Eigen::Matrix<double, 3, 6>> jacobians(total_size);
         std::vector<Vec3d>                       errors(total_size);
@@ -183,6 +184,7 @@ bool Ndt3d::AlignNdt(SE3& init_pose)
         if (effective_num < options_.min_effective_pts_)
         {
             LOG(WARNING) << "effective num too small: " << effective_num;
+            score_ = 0;
             return false;
         }
 
@@ -205,8 +207,19 @@ bool Ndt3d::AlignNdt(SE3& init_pose)
             LOG(INFO) << "iter " << iter << " pose error: " << pose_error;
         }
 
+        if (effective_num / float(source_->size()) > 0.2)
+        {
+            score_ += 1;
+        }
+
+        if (total_res / effective_num < 9.5)
+        {
+            score_ += 1;
+        }
+
         if (dx.norm() < options_.eps_)
         {
+            score_ += 1;
             LOG(INFO) << "converged, dx = " << dx.transpose();
             break;
         }

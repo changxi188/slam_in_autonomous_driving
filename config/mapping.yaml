@@ -18,7 +18,7 @@ loop_closing:
   min_id_interval: 100
   min_distance: 15
   skip_id: 10
-  ndt_score_th: 4.5
+  ndt_score_th: 2
 common:
   dataset: nclt
   lid_topic: points_raw
