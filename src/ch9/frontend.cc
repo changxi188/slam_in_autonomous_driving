@@ -46,7 +46,6 @@ void Frontend::Run()
 {
     sad::RosbagIO rosbag_io(bag_path_, DatasetType::NCLT);
 
-    /*
     // 先提取RTK pose，注意NCLT只有平移部分
     rosbag_io
         .AddAutoRTKHandle([this](GNSSPtr gnss) {
@@ -57,7 +56,6 @@ void Frontend::Run()
     rosbag_io.CleanProcessFunc();  // 不再需要处理RTK
 
     RemoveMapOrigin();
-    */
 
     // 再运行LIO
     rosbag_io

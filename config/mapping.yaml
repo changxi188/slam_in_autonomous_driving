@@ -1,12 +1,11 @@
 YAML: 1.0
-#bag_path: /home/cheng/code/slam_in_autonomous_driving/dataset/sad/avia/HKU_MB_2020-09-20-13-34-51.bag
 bag_path: /home/cheng/code/slam_in_autonomous_driving/dataset/sad/nclt/20120429.bag
 lio_yaml: ./config/velodyne_nclt.yaml
 map_data: ./data/ch9/map_data/
 origin:
-  - 276726.5626579862
-  - 4685961.4821172
-  - 272.809
+  - 276727.9669506345
+  - 4685962.446515145
+  - 272.504
 rtk_has_rot: false
 rtk_outlier_th: 1.0
 rtk_pos_noise: 2.0
@@ -17,8 +16,8 @@ rtk_ext:
   t: [0, 0.24, -0.283]
 loop_closing:
   min_id_interval: 100
-  min_distance: 30
-  skip_id: 5
+  min_distance: 15
+  skip_id: 10
   ndt_score_th: 4.5
 common:
   dataset: nclt

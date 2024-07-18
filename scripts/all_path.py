@@ -19,7 +19,7 @@ def PlotPath(keyframes):
     p02, = ax.plot(keyframes[:, 19], keyframes[:, 20], keyframes[:, 21], 'b-')
 
     # opti2
-    # p03, = ax.plot(keyframes[:, 26], keyframes[:, 27], keyframes[:, 28], 'r-')
+    p03, = ax.plot(keyframes[:, 26], keyframes[:, 27], keyframes[:, 28], 'r-')
 
     plt.title("All path", fontsize=16)
     plt.grid()
@@ -35,9 +35,9 @@ def PlotPath(keyframes):
     p2, = plt.plot(keyframes[:, 19], keyframes[:, 20], 'b-')
 
     # opti2
-    # p3, = plt.plot(keyframes[:, 26], keyframes[:, 27], 'r-')
-    # plt.legend(['Lidar', 'RTK', 'Opti1', 'Opti2'])
-    plt.legend(['Lidar', 'RTK', 'Opti1'])
+    p3, = plt.plot(keyframes[:, 26], keyframes[:, 27], 'r-')
+    plt.legend(['Lidar', 'RTK', 'Opti1', 'Opti2'])
+    plt.legend(['Lidar', 'RTK', 'Opti1', 'Opti2'])
 
     plt.show()
 
