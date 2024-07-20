@@ -78,6 +78,74 @@ void Ndt3d::BuildVoxels()
     }
 }
 
+Ndt3d::NdtGrid Ndt3d::BuildVoxels(const CloudPtr cloud)
+{
+    NdtGrid grids;  // 栅格数据
+    assert(cloud != nullptr);
+    assert(cloud->empty() == false);
+
+    /// 分配体素
+    std::vector<size_t> index(cloud->size());
+    std::for_each(index.begin(), index.end(), [idx = 0](size_t& i) mutable { i = idx++; });
+
+    std::for_each(index.begin(), index.end(), [&](const size_t& idx) {
+        Vec3d pt  = ToVec3d(cloud->points[idx]) * options_.inv_voxel_size_;
+        auto  key = CastToInt(pt);
+        if (grids.find(key) == grids.end())
+        {
+            grids.insert({key, {idx}});
+        }
+        else
+        {
+            grids[key].idx_.emplace_back(idx);
+        }
+    });
+    LOG(INFO) << "grids size stage 1 : " << grids.size();
+
+    /// 计算每个体素中的均值和协方差
+    std::for_each(std::execution::par_unseq, grids.begin(), grids.end(), [&](auto& v) {
+        if (v.second.idx_.size() > options_.min_pts_in_voxel_)
+        {
+            // 要求至少有３个点
+            math::ComputeMeanAndCov(v.second.idx_, v.second.mu_, v.second.sigma_,
+                                    [&](const size_t& idx) { return ToVec3d(cloud->points[idx]); });
+            // SVD 检查最大与最小奇异值，限制最小奇异值
+
+            Eigen::JacobiSVD svd(v.second.sigma_, Eigen::ComputeFullU | Eigen::ComputeFullV);
+            Vec3d            lambda = svd.singularValues();
+            if (lambda[1] < lambda[0] * 1e-3)
+            {
+                lambda[1] = lambda[0] * 1e-3;
+            }
+
+            if (lambda[2] < lambda[0] * 1e-3)
+            {
+                lambda[2] = lambda[0] * 1e-3;
+            }
+
+            Mat3d inv_lambda = Vec3d(1.0 / lambda[0], 1.0 / lambda[1], 1.0 / lambda[2]).asDiagonal();
+
+            // v.second.info_ = (v.second.sigma_ + Mat3d::Identity() * 1e-3).inverse();  // 避免出nan
+            v.second.info_ = svd.matrixV() * inv_lambda * svd.matrixU().transpose();
+        }
+    });
+
+    /// 删除点数不够的
+    for (auto iter = grids.begin(); iter != grids.end();)
+    {
+        if (iter->second.idx_.size() > options_.min_pts_in_voxel_)
+        {
+            iter++;
+        }
+        else
+        {
+            iter = grids.erase(iter);
+        }
+    }
+    LOG(INFO) << "grids size stage 2 : " << grids.size();
+    return grids;
+}
+
 bool Ndt3d::AlignNdt(SE3& init_pose)
 {
     LOG(INFO) << "aligning with ndt";

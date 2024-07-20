@@ -9,6 +9,7 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
 
+#include "ch7/ndt_3d.h"
 #include "common/eigen_types.h"
 #include "common/point_cloud_utils.h"
 #include "keyframe.h"
@@ -81,8 +82,22 @@ int main(int argc, char** argv)
     std::system("mkdir -p ./data/ch9/map_data/");
     std::system("rm -rf ./data/ch9/map_data/*");  // 清理一下文件夹
     std::ofstream fout("./data/ch9/map_data/map_index.txt");
+
+    std::map<Vec2i, Ndt3d::NdtGrid, less_vec<2>> grid_map_data;  // 以网格ID为索引的地图数据
     for (auto& dp : map_data)
     {
+        // 生成ndt grid
+        Ndt3d::Options ndt_option;
+        ndt_option.voxel_size_        = 1;
+        ndt_option.min_effective_pts_ = 5;
+        Ndt3d          ndt_3d(ndt_option);
+        Ndt3d::NdtGrid ndt_grid = ndt_3d.BuildVoxels(dp.second);
+        if (ndt_grid.size() != 0)
+        {
+            grid_map_data.emplace(dp.first, ndt_grid);
+        }
+        LOG(INFO) << "ndt_grid info : " << ndt_grid.size();
+
         fout << dp.first[0] << " " << dp.first[1] << std::endl;
         dp.second->width = dp.second->size();
         sad::VoxelGrid(dp.second, 0.1);
@@ -90,8 +105,18 @@ int main(int argc, char** argv)
         sad::SaveCloudToFile("./data/ch9/map_data/" + std::to_string(dp.first[0]) + "_" + std::to_string(dp.first[1]) +
                                  ".pcd",
                              *dp.second);
+        LOG(INFO) << "dp second size : " << dp.second->size();
     }
     fout.close();
+
+    std::ofstream fout2("./data/ch9/map_data/ndt_map_index.txt");
+    for (const auto& dp : grid_map_data)
+    {
+        fout2 << dp.first[0] << " " << dp.first[1] << std::endl;
+        Ndt3d::WriteNdtGridToFile(dp.second, "./data/ch9/map_data/" + std::to_string(dp.first[0]) + "_" +
+                                                 std::to_string(dp.first[1]) + ".ndt");
+    }
+    fout2.close();
 
     LOG(INFO) << "done.";
     return 0;

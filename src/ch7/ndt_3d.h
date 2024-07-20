@@ -5,6 +5,7 @@
 #ifndef SLAM_IN_AUTO_DRIVING_NDT_3D_H
 #define SLAM_IN_AUTO_DRIVING_NDT_3D_H
 
+#include <fstream>
 #include "common/eigen_types.h"
 #include "common/point_types.h"
 
@@ -35,8 +36,8 @@ public:
 
         NearbyType nearby_type_ = NearbyType::NEARBY6;
     };
-
     using KeyType = Eigen::Matrix<int, 3, 1>;  // 体素的索引
+
     struct VoxelData
     {
         VoxelData()
@@ -51,7 +52,95 @@ public:
         Vec3d               mu_    = Vec3d::Zero();  // 均值
         Mat3d               sigma_ = Mat3d::Zero();  // 协方差
         Mat3d               info_  = Mat3d::Zero();  // 协方差之逆
+
+        void WriteToFile(std::ofstream& out) const
+        {
+            // Write vector size and elements
+            size_t idx_size = idx_.size();
+            out.write(reinterpret_cast<const char*>(&idx_size), sizeof(idx_size));
+            out.write(reinterpret_cast<const char*>(idx_.data()), idx_size * sizeof(size_t));
+
+            // Write Vec3d mu_
+            out.write(reinterpret_cast<const char*>(mu_.data()), mu_.size() * sizeof(double));
+
+            // Write Mat3d sigma_
+            out.write(reinterpret_cast<const char*>(sigma_.data()), sigma_.size() * sizeof(double));
+
+            // Write Mat3d info_
+            out.write(reinterpret_cast<const char*>(info_.data()), info_.size() * sizeof(double));
+        }
+
+        void ReadFromFile(std::ifstream& in)
+        {
+            // Read vector size and elements
+            size_t idx_size;
+            in.read(reinterpret_cast<char*>(&idx_size), sizeof(idx_size));
+            idx_.resize(idx_size);
+            in.read(reinterpret_cast<char*>(idx_.data()), idx_size * sizeof(size_t));
+
+            // Read Vec3d mu_
+            in.read(reinterpret_cast<char*>(mu_.data()), mu_.size() * sizeof(double));
+
+            // Read Mat3d sigma_
+            in.read(reinterpret_cast<char*>(sigma_.data()), sigma_.size() * sizeof(double));
+
+            // Read Mat3d info_
+            in.read(reinterpret_cast<char*>(info_.data()), info_.size() * sizeof(double));
+        }
     };
+    using NdtGrid = std::unordered_map<KeyType, VoxelData, hash_vec<3>>;
+
+    static void WriteNdtGridToFile(const NdtGrid& grid, const std::string& filename)
+    {
+        std::ofstream out(filename, std::ios::binary);
+        if (!out)
+        {
+            throw std::ios_base::failure("Failed to open file for writing");
+        }
+
+        // Write the number of elements in the map
+        size_t map_size = grid.size();
+        out.write(reinterpret_cast<const char*>(&map_size), sizeof(map_size));
+
+        for (const auto& pair : grid)
+        {
+            // Write the key
+            out.write(reinterpret_cast<const char*>(pair.first.data()), pair.first.size() * sizeof(size_t));
+
+            // Write the value
+            pair.second.WriteToFile(out);
+        }
+
+        out.close();
+    }
+
+    static void ReadNdtGridFromFile(NdtGrid& grid, const std::string& filename)
+    {
+        std::ifstream in(filename, std::ios::binary);
+        if (!in)
+        {
+            throw std::ios_base::failure("Failed to open file for reading");
+        }
+
+        // Read the number of elements in the map
+        size_t map_size;
+        in.read(reinterpret_cast<char*>(&map_size), sizeof(map_size));
+
+        for (size_t i = 0; i < map_size; ++i)
+        {
+            // Read the key
+            KeyType key;
+            in.read(reinterpret_cast<char*>(key.data()), key.size() * sizeof(size_t));
+
+            // Read the value
+            VoxelData value;
+            value.ReadFromFile(in);
+
+            grid[key] = value;
+        }
+
+        in.close();
+    }
 
     Ndt3d()
     {
@@ -101,6 +190,8 @@ public:
         return score_;
     }
 
+    NdtGrid BuildVoxels(const CloudPtr cloud);
+
 private:
     void BuildVoxels();
 
@@ -118,8 +209,8 @@ private:
 
     Options options_;
 
-    std::unordered_map<KeyType, VoxelData, hash_vec<3>> grids_;         // 栅格数据
-    std::vector<KeyType>                                nearby_grids_;  // 附近的栅格
+    NdtGrid              grids_;         // 栅格数据
+    std::vector<KeyType> nearby_grids_;  // 附近的栅格
 
     double score_ = 0;
 };

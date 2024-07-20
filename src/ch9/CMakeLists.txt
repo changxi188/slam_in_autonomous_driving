@@ -51,3 +51,10 @@ target_link_libraries(split_map
         ${PROJECT_NAME}.common
         ${third_party_libs}
         )
+
+add_executable(load_ndt_grid load_ndt_grid.cc)
+target_link_libraries(load_ndt_grid
+        ${PROJECT_NAME}.ch9
+        ${PROJECT_NAME}.common
+        ${third_party_libs}
+        )
