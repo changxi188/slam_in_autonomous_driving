@@ -92,11 +92,13 @@ private:
     Status status_ = Status::WAITING_FOR_RTK;
 
     /// 数据
-    std::string                            config_yaml_;                 // 配置文件路径
-    Vec3d                                  map_origin_ = Vec3d::Zero();  // 地图原点
-    std::string                            data_path_;                   // 地图数据目录
-    std::set<Vec2i, less_vec<2>>           map_data_index_;              // 哪些格子存在地图数据
-    std::map<Vec2i, CloudPtr, less_vec<2>> map_data_;                    // 第9章建立的地图数据
+    std::string                                  config_yaml_;                 // 配置文件路径
+    Vec3d                                        map_origin_ = Vec3d::Zero();  // 地图原点
+    std::string                                  data_path_;                   // 地图数据目录
+    std::set<Vec2i, less_vec<2>>                 map_data_index_;              // 哪些格子存在地图数据
+    std::map<Vec2i, CloudPtr, less_vec<2>>       all_map_data_;                // 用于可视化的地图数据
+    std::map<Vec2i, CloudPtr, less_vec<2>>       selected_map_data_;           // 用于可视化的地图数据
+    std::map<Vec2i, Ndt3d::NdtGrid, less_vec<2>> ndt_map_data_;                // 第9章建立的NDT地图数据
 
     std::shared_ptr<MessageSync> sync_ = nullptr;  // 消息同步器
     StaticIMUInit                imu_init_;        // IMU静止初始化
@@ -116,11 +118,9 @@ private:
     SE3  last_searched_pos_;        // 上次搜索的GNSS位置
 
     /// 激光定位
-    bool imu_need_init_ = true;  // 是否需要估计IMU初始零偏
-    // CloudPtr ref_cloud_     = nullptr;  // NDT用于参考的点云
-    // pcl::NormalDistributionsTransform<PointType, PointType> ndt_;
-    Ndt3d          self_ndt_;
-    Ndt3d::NdtGrid ref_grid_;  // NDT用于参考的点云
+    bool           imu_need_init_ = true;  // 是否需要估计IMU初始零偏
+    Ndt3d          self_ndt_;              //书中实现的ndt算法
+    Ndt3d::NdtGrid ref_grid_;              // NDT用于参考的栅格
 
     /// 参数
     double rtk_search_min_score_ = 2.0;

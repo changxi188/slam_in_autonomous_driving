@@ -159,7 +159,11 @@ void Fusion::Align()
     }
     else
     {
+        auto t1 = std::chrono::steady_clock::now();
         LidarLocalization();
+        auto t2                    = std::chrono::steady_clock::now();
+        auto lidar_local_time_used = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() * 1000;
+        LOG(ERROR) << "lidar local time used cost : " << lidar_local_time_used;
         ui_->UpdateScan(current_scan_, eskf_.GetNominalSE3());
         ui_->UpdateNavState(eskf_.GetNominalState());
     }
@@ -226,31 +230,6 @@ bool Fusion::SearchRTK()
 void Fusion::AlignForGrid(sad::Fusion::GridSearchResult& gr)
 {
     /// 多分辨率
-    /*
-    pcl::NormalDistributionsTransform<PointType, PointType> ndt;
-    ndt.setTransformationEpsilon(0.05);
-    ndt.setStepSize(0.7);
-    ndt.setMaximumIterations(40);
-
-    ndt.setInputSource(current_scan_);
-    auto map = ref_cloud_;
-
-    CloudPtr            output(new PointCloudType);
-    std::vector<double> res{10.0, 5.0, 4.0, 3.0};
-    Mat4f               T = gr.pose_.matrix().cast<float>();
-    for (auto& r : res)
-    {
-        auto rough_map = VoxelCloud(map, r * 0.1);
-        ndt.setInputTarget(rough_map);
-        ndt.setResolution(r);
-        ndt.align(*output, T);
-        T = ndt.getFinalTransformation();
-    }
-
-    gr.score_       = ndt.getTransformationProbability();
-    gr.result_pose_ = Mat4ToSE3(ndt.getFinalTransformation());
-    */
-
     Ndt3d ndt;
     ndt.SetNdtGrid(ref_grid_);
     ndt.SetSource(current_scan_);
@@ -270,9 +249,6 @@ bool Fusion::LidarLocalization()
     SE3      pose = pred;
     self_ndt_.AlignNdt(pose);
 
-    // ndt_.align(*output, pred.matrix().cast<float>());
-    // SE3 pose = Mat4ToSE3(ndt_.getFinalTransformation());
-    // LOG(INFO) << "lidar loc score: " << ndt_.getTransformationProbability();
     eskf_.ObserveSE3(pose, 1e-1, 1e-2);
     LOG(INFO) << "lidar loc score: " << self_ndt_.GetScore();
 
@@ -303,12 +279,13 @@ void Fusion::LoadMap(const SE3& pose)
             continue;
         }
 
-        if (map_data_.find(k) == map_data_.end())
+        if (ndt_map_data_.find(k) == ndt_map_data_.end())
         {
             // 加载这个区块
-            CloudPtr cloud(new PointCloudType);
-            pcl::io::loadPCDFile(data_path_ + std::to_string(k[0]) + "_" + std::to_string(k[1]) + ".pcd", *cloud);
-            map_data_.emplace(k, cloud);
+            Ndt3d::NdtGrid ndt_grid;
+            Ndt3d::ReadNdtGridFromFile(ndt_grid,
+                                       data_path_ + std::to_string(k[0]) + "_" + std::to_string(k[1]) + ".ndt");
+            ndt_map_data_.emplace(k, ndt_grid);
             map_data_changed = true;
             cnt_new_loaded++;
         }
@@ -316,12 +293,12 @@ void Fusion::LoadMap(const SE3& pose)
     auto t2 = std::chrono::steady_clock::now();
 
     // 卸载不需要的区域，这个稍微加大一点，不需要频繁卸载
-    for (auto iter = map_data_.begin(); iter != map_data_.end();)
+    for (auto iter = ndt_map_data_.begin(); iter != ndt_map_data_.end();)
     {
         if ((iter->first - key).cast<float>().norm() > 3.0)
         {
             // 卸载本区块
-            iter = map_data_.erase(iter);
+            iter = ndt_map_data_.erase(iter);
             cnt_unload++;
             map_data_changed = true;
         }
@@ -335,32 +312,19 @@ void Fusion::LoadMap(const SE3& pose)
     LOG(INFO) << "new loaded: " << cnt_new_loaded << ", unload: " << cnt_unload;
     if (map_data_changed)
     {
-        /*
-        // rebuild ndt target map
-        ref_cloud_.reset(new PointCloudType);
-        for (auto& mp : map_data_)
-        {
-            *ref_cloud_ += *mp.second;
-        }
-
-        LOG(INFO) << "rebuild global cloud, grids: " << map_data_.size();
-        ndt_.setInputTarget(ref_cloud_);
-        */
         ref_grid_.clear();
-        for (auto& mp : map_data_)
+        selected_map_data_.clear();
+        for (auto& mp : ndt_map_data_)
         {
-            Ndt3d::NdtGrid ndt_grid;
-            Ndt3d::ReadNdtGridFromFile(ndt_grid, data_path_ + std::to_string(mp.first[0]) + "_" +
-                                                     std::to_string(mp.first[1]) + ".ndt");
-
-            for (const auto& pair : ndt_grid)
+            selected_map_data_[mp.first] = all_map_data_[mp.first];
+            for (const auto& pair : mp.second)
             {
                 ref_grid_[pair.first] = pair.second;  // Overwrite if key exists
             }
         }
         self_ndt_.SetNdtGrid(ref_grid_);
 
-        ui_->UpdatePointCloudGlobal(map_data_);
+        ui_->UpdatePointCloudGlobal(selected_map_data_);
     }
     auto t4 = std::chrono::steady_clock::now();
 
@@ -387,6 +351,13 @@ void Fusion::LoadMapIndex()
         map_data_index_.emplace(Vec2i(x, y));
     }
     fin.close();
+
+    for (const auto& index : map_data_index_)
+    {
+        CloudPtr cloud(new PointCloudType);
+        pcl::io::loadPCDFile(data_path_ + std::to_string(index[0]) + "_" + std::to_string(index[1]) + ".pcd", *cloud);
+        all_map_data_[index] = cloud;
+    }
 }
 
 void Fusion::ProcessRTK(GNSSPtr gnss)
