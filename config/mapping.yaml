@@ -1,11 +1,11 @@
 YAML: 1.0
-bag_path: /home/cheng/code/slam_in_autonomous_driving/dataset/sad/nclt/20130110.bag
+bag_path: /home/cheng/code/slam_in_autonomous_driving/dataset/sad/nclt/20120115.bag
 lio_yaml: ./config/velodyne_nclt.yaml
 map_data: ./data/ch9/map_data/
 origin:
-  - 276726.5626579862
-  - 4685961.4821172
-  - 272.809
+  - 276727.1278250496
+  - 4685961.614857617
+  - 272.521
 rtk_has_rot: false
 rtk_outlier_th: 1.0
 rtk_pos_noise: 2.0
