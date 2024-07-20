@@ -192,6 +192,11 @@ public:
 
     NdtGrid BuildVoxels(const CloudPtr cloud);
 
+    void SetNdtGrid(const NdtGrid& ref_grids)
+    {
+        grids_ = ref_grids;
+    }
+
 private:
     void BuildVoxels();
 

@@ -15,6 +15,7 @@
 
 #include "ch7/loosely_coupled_lio/cloud_convert.h"
 #include "ch7/loosely_coupled_lio/measure_sync.h"
+#include "ch7/ndt_3d.h"
 
 #include "tools/ui/pangolin_window.h"
 
@@ -115,12 +116,14 @@ private:
     SE3  last_searched_pos_;        // 上次搜索的GNSS位置
 
     /// 激光定位
-    bool                                                    imu_need_init_ = true;  // 是否需要估计IMU初始零偏
-    CloudPtr                                                ref_cloud_     = nullptr;  // NDT用于参考的点云
-    pcl::NormalDistributionsTransform<PointType, PointType> ndt_;
+    bool imu_need_init_ = true;  // 是否需要估计IMU初始零偏
+    // CloudPtr ref_cloud_     = nullptr;  // NDT用于参考的点云
+    // pcl::NormalDistributionsTransform<PointType, PointType> ndt_;
+    Ndt3d          self_ndt_;
+    Ndt3d::NdtGrid ref_grid_;  // NDT用于参考的点云
 
     /// 参数
-    double rtk_search_min_score_ = 4.5;
+    double rtk_search_min_score_ = 2.0;
 
     // ui
     std::shared_ptr<ui::PangolinWindow> ui_ = nullptr;

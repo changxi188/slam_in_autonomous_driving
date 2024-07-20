@@ -15,7 +15,10 @@ Fusion::Fusion(const std::string& config_yaml)
     StaticIMUInit::Options imu_init_options;
     imu_init_options.use_speed_for_static_checking_ = false;  // 本节数据不需要轮速计
     imu_init_                                       = StaticIMUInit(imu_init_options);
-    ndt_.setResolution(1.0);
+    // ndt_.setResolution(1.0);
+
+    Ndt3d::Options ndt_3d_options;
+    self_ndt_ = Ndt3d(ndt_3d_options);
 }
 
 bool Fusion::Init()
@@ -223,6 +226,7 @@ bool Fusion::SearchRTK()
 void Fusion::AlignForGrid(sad::Fusion::GridSearchResult& gr)
 {
     /// 多分辨率
+    /*
     pcl::NormalDistributionsTransform<PointType, PointType> ndt;
     ndt.setTransformationEpsilon(0.05);
     ndt.setStepSize(0.7);
@@ -245,6 +249,15 @@ void Fusion::AlignForGrid(sad::Fusion::GridSearchResult& gr)
 
     gr.score_       = ndt.getTransformationProbability();
     gr.result_pose_ = Mat4ToSE3(ndt.getFinalTransformation());
+    */
+
+    Ndt3d ndt;
+    ndt.SetNdtGrid(ref_grid_);
+    ndt.SetSource(current_scan_);
+    SE3 result = gr.pose_;
+    ndt.AlignNdt(result);
+    gr.score_       = ndt.GetScore();
+    gr.result_pose_ = result;
 }
 
 bool Fusion::LidarLocalization()
@@ -252,20 +265,23 @@ bool Fusion::LidarLocalization()
     SE3 pred = eskf_.GetNominalSE3();
     LoadMap(pred);
 
-    ndt_.setInputCloud(current_scan_);
+    self_ndt_.SetSource(current_scan_);
     CloudPtr output(new PointCloudType);
-    ndt_.align(*output, pred.matrix().cast<float>());
+    SE3      pose = pred;
+    self_ndt_.AlignNdt(pose);
 
-    SE3 pose = Mat4ToSE3(ndt_.getFinalTransformation());
+    // ndt_.align(*output, pred.matrix().cast<float>());
+    // SE3 pose = Mat4ToSE3(ndt_.getFinalTransformation());
+    // LOG(INFO) << "lidar loc score: " << ndt_.getTransformationProbability();
     eskf_.ObserveSE3(pose, 1e-1, 1e-2);
-
-    LOG(INFO) << "lidar loc score: " << ndt_.getTransformationProbability();
+    LOG(INFO) << "lidar loc score: " << self_ndt_.GetScore();
 
     return true;
 }
 
 void Fusion::LoadMap(const SE3& pose)
 {
+    auto  t1 = std::chrono::steady_clock::now();
     int   gx = floor((pose.translation().x() - 50.0) / 100);
     int   gy = floor((pose.translation().y() - 50.0) / 100);
     Vec2i key(gx, gy);
@@ -317,6 +333,7 @@ void Fusion::LoadMap(const SE3& pose)
     LOG(INFO) << "new loaded: " << cnt_new_loaded << ", unload: " << cnt_unload;
     if (map_data_changed)
     {
+        /*
         // rebuild ndt target map
         ref_cloud_.reset(new PointCloudType);
         for (auto& mp : map_data_)
@@ -326,14 +343,32 @@ void Fusion::LoadMap(const SE3& pose)
 
         LOG(INFO) << "rebuild global cloud, grids: " << map_data_.size();
         ndt_.setInputTarget(ref_cloud_);
+        */
+        ref_grid_.clear();
+        for (auto& mp : map_data_)
+        {
+            Ndt3d::NdtGrid ndt_grid;
+            Ndt3d::ReadNdtGridFromFile(ndt_grid, data_path_ + std::to_string(mp.first[0]) + "_" +
+                                                     std::to_string(mp.first[1]) + ".ndt");
+
+            for (const auto& pair : ndt_grid)
+            {
+                ref_grid_[pair.first] = pair.second;  // Overwrite if key exists
+            }
+        }
+        self_ndt_.SetNdtGrid(ref_grid_);
+
+        ui_->UpdatePointCloudGlobal(map_data_);
     }
 
-    ui_->UpdatePointCloudGlobal(map_data_);
+    auto t2        = std::chrono::steady_clock::now();
+    auto time_used = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() * 1000;
+    LOG(ERROR) << "time_used : " << time_used;
 }
 
 void Fusion::LoadMapIndex()
 {
-    std::ifstream fin(data_path_ + "/map_index.txt");
+    std::ifstream fin(data_path_ + "/ndt_map_index.txt");
     while (!fin.eof())
     {
         int x, y;
