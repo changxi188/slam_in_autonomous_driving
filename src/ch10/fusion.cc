@@ -313,6 +313,7 @@ void Fusion::LoadMap(const SE3& pose)
             cnt_new_loaded++;
         }
     }
+    auto t2 = std::chrono::steady_clock::now();
 
     // 卸载不需要的区域，这个稍微加大一点，不需要频繁卸载
     for (auto iter = map_data_.begin(); iter != map_data_.end();)
@@ -329,6 +330,7 @@ void Fusion::LoadMap(const SE3& pose)
             iter++;
         }
     }
+    auto t3 = std::chrono::steady_clock::now();
 
     LOG(INFO) << "new loaded: " << cnt_new_loaded << ", unload: " << cnt_unload;
     if (map_data_changed)
@@ -360,10 +362,19 @@ void Fusion::LoadMap(const SE3& pose)
 
         ui_->UpdatePointCloudGlobal(map_data_);
     }
+    auto t4 = std::chrono::steady_clock::now();
 
-    auto t2        = std::chrono::steady_clock::now();
-    auto time_used = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() * 1000;
-    LOG(ERROR) << "time_used : " << time_used;
+    if (map_data_changed)
+    {
+        auto load_map_time_used    = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count() * 1000;
+        auto unload_map_time_used  = std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2).count() * 1000;
+        auto update_grid_time_used = std::chrono::duration_cast<std::chrono::duration<double>>(t4 - t3).count() * 1000;
+        auto total_time_used       = std::chrono::duration_cast<std::chrono::duration<double>>(t4 - t1).count() * 1000;
+        LOG(ERROR) << "load map cost : " << load_map_time_used;
+        LOG(ERROR) << "unload map cost : " << unload_map_time_used;
+        LOG(ERROR) << "update_grid_time_used cost : " << update_grid_time_used;
+        LOG(ERROR) << "total load cost : " << total_time_used;
+    }
 }
 
 void Fusion::LoadMapIndex()
